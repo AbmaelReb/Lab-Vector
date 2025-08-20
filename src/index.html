@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estudo Interativo de Vetores</title>
+    <style>
+        body { font-family: Arial, sans-serif; display: flex; align-items: flex-start; margin: 20px; background-color: #f0f0f0; user-select: none; }
+        canvas { border: 2px solid #333; background-color: #fff; cursor: default; }
+        #ui-panel { margin-left: 20px; display: flex; flex-direction: column; gap: 20px; width: 280px; }
+        .control-box { padding: 15px; border: 2px solid #ccc; border-radius: 8px; background-color: #fafafa; }
+        p.info { font-size: 14px; color: #555; border: 1px dashed #ccc; padding: 10px; border-radius: 4px; background-color: #f9f9f9; margin-top: 0; }
+        button { width: 100%; padding: 10px; font-size: 16px; background-color: #007bff; color: white; border: none; cursor: pointer; border-radius: 5px; margin-top: 10px; }
+        button:hover { background-color: #0056b3; }
+        button.secondary { background-color: #dc3545; }
+        button.secondary:hover { background-color: #c82333; }
+        h3 { border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 0; }
+        #vectorList { min-height: 100px; max-height: 195px; overflow-y: auto; }
+        .vector-item { display: flex; align-items: flex-start; padding: 5px 0; font-size: 14px; font-family: 'Courier New', Courier, monospace; }
+        .color-swatch { width: 15px; height: 15px; border-radius: 3px; margin-right: 10px; border: 1px solid #777; flex-shrink: 0; margin-top: 3px; }
+    </style>
+</head>
+<body>
+    <canvas id="planoCartesiano" width="1000" height="600"></canvas>
+    <div id="ui-panel">
+        <div class="control-box">
+            <h3>Controles</h3>
+            <p class="info">
+                <b>Clique duplo:</b> Adiciona um vetor.<br>
+                <b>Arrastar origem:</b> Altera a origem.<br>
+                <b>Arrastar ponta:</b> Altera o vetor.<br>
+                <b>Arrastar corpo:</b> Move o vetor.
+            </p>
+            <button id="botaoCalcularResultante">Calcular Vetor Resultante</button>
+            <button id="botaoResetar" class="secondary">Limpar Tudo</button>
+        </div>
+        <div id="vectorList" class="control-box"></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("planoCartesiano");
+        const ctx = canvas.getContext("2d");
+        const vectorListDiv = document.getElementById("vectorList");
+
+        const gridSize = 40;
+        const origin = { x: canvas.width / 2, y: canvas.height / 2 };
+        const clickTolerance = 10;
+
+        let vetores = [];
+        let vetorResultante = null;
+        let isDragging = false;
+        let selectedVector = null;
+        let selectedPoint = null;
+        let dragOffset = { x: 0, y: 0 };
+
+        const imagem = new Image();
+        imagem.src = 'vector.png';
+
+        const imagemConfig = {
+            x: 1,
+            y: 1,
+            largura: 220,
+            altura: 140
+        };
+
+        const toCanvasX = (x) => origin.x + x * gridSize;
+        const toCanvasY = (y) => origin.y - y * gridSize;
+        const fromCanvasX = (canvasX) => (canvasX - origin.x) / gridSize;
+        const fromCanvasY = (canvasY) => (origin.y - canvasY) / gridSize;
+
+        function gerarCorAleatoria() {
+            const hue = Math.floor(Math.random() * 300) + 30;
+            return `hsl(${hue}, 90%, 50%)`;
+        }
+
+        // <<< NOVA FUNÇÃO DE SNAP >>>
+        function snapAosPontos(mouseX, mouseY, vetorAtual) {
+            const snapRadius = 0.5; // Raio do "ímã"
+            let snappedPos = { x: mouseX, y: mouseY };
+
+            let dist = Math.sqrt(mouseX**2 + mouseY**2);
+            if (dist < snapRadius) {
+                return { x: 0, y: 0 };
+            }
+
+            for (const v of vetores) {
+                if (v === vetorAtual) {
+                    continue;
+                }
+                dist = Math.sqrt((mouseX - v.x1)**2 + (mouseY - v.y1)**2);
+                if (dist < snapRadius) {
+                    return { x: v.x1, y: v.y1 };
+                }
+                dist = Math.sqrt((mouseX - v.x2)**2 + (mouseY - v.y2)**2);
+                if (dist < snapRadius) {
+                    return { x: v.x2, y: v.y2 };
+                }
+            }
+            return snappedPos;
+        }
+
+        function desenharGrid() {
+            ctx.strokeStyle = "#e0e0e0"; ctx.lineWidth = 1; ctx.beginPath();
+            for (let x = origin.x + gridSize; x < canvas.width; x += gridSize) { ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); }
+            for (let x = origin.x - gridSize; x >= 0; x -= gridSize) { ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); }
+            for (let y = origin.y + gridSize; y < canvas.height; y += gridSize) { ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); }
+            for (let y = origin.y - gridSize; y >= 0; y -= gridSize) { ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); }
+            ctx.stroke();
+            ctx.strokeStyle = "#333"; ctx.lineWidth = 2; ctx.beginPath();
+            ctx.moveTo(0, origin.y); ctx.lineTo(canvas.width, origin.y);
+            ctx.moveTo(origin.x, 0); ctx.lineTo(origin.x, canvas.height);
+            ctx.stroke();
+            ctx.font = "12px Arial"; ctx.fillStyle = "#333"; ctx.textAlign = "center"; ctx.textBaseline = "top";
+            for (let i = -Math.floor(origin.x / gridSize); i <= Math.floor(origin.x / gridSize); i++) { if (i !== 0) ctx.fillText(i, toCanvasX(i), toCanvasY(0) + 5); }
+            ctx.textAlign = "right"; ctx.textBaseline = "middle";
+            for (let i = -Math.floor(origin.y / gridSize); i <= Math.floor(origin.y / gridSize); i++) { if (i !== 0) ctx.fillText(i, toCanvasX(0) - 5, toCanvasY(i)); }
+        }
+
+        function desenharSeta(x1, y1, x2, y2, nome, corLinha, corPonta) {
+            if (corPonta === undefined) { corPonta = corLinha; }
+            const [cx1, cy1, cx2, cy2] = [toCanvasX(x1), toCanvasY(y1), toCanvasX(x2), toCanvasY(y2)];
+            ctx.beginPath(); ctx.moveTo(cx1, cy1); ctx.lineTo(cx2, cy2);
+            ctx.strokeStyle = corLinha; ctx.lineWidth = 3; ctx.stroke();
+            const angulo = Math.atan2(cy2 - cy1, cx2 - cx1); const tamanhoSeta = 10;
+            ctx.beginPath(); ctx.moveTo(cx2, cy2);
+            ctx.lineTo(cx2 - tamanhoSeta * Math.cos(angulo - Math.PI / 6), cy2 - tamanhoSeta * Math.sin(angulo - Math.PI / 6));
+            ctx.lineTo(cx2 - tamanhoSeta * Math.cos(angulo + Math.PI / 6), cy2 - tamanhoSeta * Math.sin(angulo + Math.PI / 6));
+            ctx.lineTo(cx2, cy2); ctx.fillStyle = corPonta; ctx.fill();
+            if (nome) { ctx.font = "16px Arial"; ctx.fillStyle = "#000"; ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.fillText(nome, cx2 + 10, cy2); }
+        }
+        
+        function atualizarListaVetores() {
+            vectorListDiv.innerHTML = '<h3>Lista de Vetores</h3>';
+            if (vetores.length === 0 && !vetorResultante) { vectorListDiv.innerHTML += '<p style="font-size:14px; color:#888;">Nenhum vetor adicionado.</p>'; return; }
+            const f = (num) => num.toFixed(1).padStart(5, ' ');
+            vetores.forEach(v => {
+                const dx = v.x2 - v.x1;
+                const dy = v.y2 - v.y1;
+                const modulo = Math.sqrt(dx**2 + dy**2);
+                const item = document.createElement('div'); 
+                item.className = 'vector-item';
+                item.innerHTML = `<div class="color-swatch" style="background-color: ${v.cor};"></div><div><b>${v.nome}:</b> (${f(v.x1)}, ${f(v.y1)}) → (${f(v.x2)}, ${f(v.y2)})<br>|${v.nome}| = ${modulo.toFixed(2)}</div>`;
+                vectorListDiv.appendChild(item);
+            });
+            if (vetorResultante) {
+                const dx = vetorResultante.x2 - vetorResultante.x1;
+                const dy = vetorResultante.y2 - vetorResultante.y1;
+                const modulo = Math.sqrt(dx**2 + dy**2);
+                const item = document.createElement('div');
+                item.className = 'vector-item';
+                item.innerHTML = `<div class="color-swatch" style="background-color: red;"></div><div><b>${vetorResultante.nome}:</b> (${f(vetorResultante.x1)}, ${f(vetorResultante.y1)}) → (${f(vetorResultante.x2)}, ${f(vetorResultante.y2)})<br>|${vetorResultante.nome}| = ${modulo.toFixed(2)}</div>`;
+                vectorListDiv.appendChild(item);
+            }
+        }
+
+        function desenharTudo() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            desenharGrid();
+            if (imagem.complete && imagem.naturalWidth > 0) {
+                ctx.drawImage(imagem, imagemConfig.x, imagemConfig.y, imagemConfig.largura, imagemConfig.altura);
+            }
+            vetores.forEach(v => { desenharSeta(v.x1, v.y1, v.x2, v.y2, v.nome, v.cor); });
+            if (vetorResultante) { desenharSeta(vetorResultante.x1, vetorResultante.y1, vetorResultante.x2, vetorResultante.y2, null, 'red'); }
+            atualizarListaVetores();
+        }
+
+        function distToSegment(p, v, w) {
+            const l2 = (v.x - w.x)**2 + (v.y - w.y)**2; if (l2 === 0) return Math.sqrt((p.x - v.x)**2 + (p.y - v.y)**2);
+            let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            const proj = { x: v.x + t * (w.x - v.x), y: v.y + t * (w.y - v.y) };
+            return Math.sqrt((p.x - proj.x)**2 + (p.y - proj.y)**2);
+        }
+
+        canvas.addEventListener('dblclick', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = fromCanvasX(e.clientX - rect.left); const mouseY = fromCanvasY(e.clientY - rect.top);
+            const novoVetor = { x1: mouseX, y1: mouseY, x2: mouseX + 1, y2: mouseY + 1, nome: String.fromCharCode(65 + vetores.length), cor: gerarCorAleatoria() };
+            vetores.push(novoVetor); vetorResultante = null; desenharTudo();
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseCanvas = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+            const mouseCartesian = { x: fromCanvasX(mouseCanvas.x), y: fromCanvasY(mouseCanvas.y) };
+            for (let i = vetores.length - 1; i >= 0; i--) {
+                const v = vetores[i];
+                const startPointCanvas = { x: toCanvasX(v.x1), y: toCanvasY(v.y1) };
+                const endPointCanvas = { x: toCanvasX(v.x2), y: toCanvasY(v.y2) };
+                if (Math.sqrt((mouseCanvas.x - endPointCanvas.x)**2 + (mouseCanvas.y - endPointCanvas.y)**2) < clickTolerance) { isDragging = true; selectedVector = v; selectedPoint = 'end'; canvas.style.cursor = 'crosshair'; return; }
+                if (Math.sqrt((mouseCanvas.x - startPointCanvas.x)**2 + (mouseCanvas.y - startPointCanvas.y)**2) < clickTolerance) { isDragging = true; selectedVector = v; selectedPoint = 'start'; canvas.style.cursor = 'crosshair'; return; }
+                if (distToSegment(mouseCartesian, {x: v.x1, y: v.y1}, {x: v.x2, y: v.y2}) * gridSize < clickTolerance) { isDragging = true; selectedVector = v; selectedPoint = 'body'; dragOffset = { x: mouseCartesian.x - v.x1, y: mouseCartesian.y - v.y1 }; canvas.style.cursor = 'move'; return; }
+            }
+        });
+
+        // <<< LISTENER MOUSEMOVE ATUALIZADO >>>
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDragging || !selectedVector) return;
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = fromCanvasX(e.clientX - rect.left);
+            const mouseY = fromCanvasY(e.clientY - rect.top);
+            
+            const snappedPos = snapAosPontos(mouseX, mouseY, selectedVector);
+
+            if (selectedPoint === 'end') {
+                selectedVector.x2 = snappedPos.x;
+                selectedVector.y2 = snappedPos.y;
+            } else if (selectedPoint === 'start') {
+                selectedVector.x1 = snappedPos.x;
+                selectedVector.y1 = snappedPos.y;
+            } else if (selectedPoint === 'body') {
+                const dx = selectedVector.x2 - selectedVector.x1;
+                const dy = selectedVector.y2 - selectedVector.y1;
+                selectedVector.x1 = mouseX - dragOffset.x;
+                selectedVector.y1 = mouseY - dragOffset.y;
+                selectedVector.x2 = selectedVector.x1 + dx;
+                selectedVector.y2 = selectedVector.y1 + dy;
+            }
+            vetorResultante = null;
+            desenharTudo();
+        });
+
+        const stopDragging = () => { if(isDragging) { isDragging = false; selectedVector = null; selectedPoint = null; canvas.style.cursor = 'default'; } };
+        canvas.addEventListener('mouseup', stopDragging);
+        canvas.addEventListener('mouseleave', stopDragging);
+
+        function calcularVetorResultante() {
+            if (vetores.length === 0) { vetorResultante = null; desenharTudo(); return; }
+            let resultanteDx = 0, resultanteDy = 0;
+            vetores.forEach(v => { resultanteDx += (v.x2 - v.x1); resultanteDy += (v.y2 - v.y1); });
+            const startX = vetores[0].x1, startY = vetores[0].y1;
+            const endX = startX + resultanteDx, endY = startY + resultanteDy;
+            vetorResultante = { x1: startX, y1: startY, x2: endX, y2: endY, nome: 'Res' };
+            desenharTudo();
+        }
+
+        function resetarCanvas() { vetores = []; vetorResultante = null; desenharTudo(); }
+
+        document.getElementById('botaoCalcularResultante').addEventListener('click', calcularVetorResultante);
+        document.getElementById('botaoResetar').addEventListener('click', resetarCanvas);
+        
+        imagem.onload = () => {
+            desenharTudo();
+        };
+
+        window.onload = desenharTudo;
+    </script>
+</body>
+</html>
