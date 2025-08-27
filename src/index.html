@@ -3,44 +3,245 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Estudo Interativo de Vetores</title>
+    <title>LabVector: Estudo de Vetores</title>
     <style>
-        body { font-family: Arial, sans-serif; display: flex; align-items: flex-start; margin: 20px; background-color: #f0f0f0; user-select: none; }
+        body { font-family: Arial, sans-serif; display: flex; align-items: flex-start; margin: 15px 20px; background-color: #f0f0f0; user-select: none; }
+        #canvas-container {
+            position: relative;
+        }
         canvas { border: 2px solid #333; background-color: #fff; cursor: default; }
         #ui-panel { margin-left: 20px; display: flex; flex-direction: column; gap: 20px; width: 280px; }
         .control-box { padding: 15px; border: 2px solid #ccc; border-radius: 8px; background-color: #fafafa; }
-        p.info { font-size: 14px; color: #555; border: 1px dashed #ccc; padding: 10px; border-radius: 4px; background-color: #f9f9f9; margin-top: 0; }
-        button { width: 100%; padding: 10px; font-size: 16px; background-color: #007bff; color: white; border: none; cursor: pointer; border-radius: 5px; margin-top: 10px; }
+        button { width: 100%; padding: 8px; font-size: 16px; background-color: #007bff; color: white; border: none; cursor: pointer; border-radius: 5px; margin-top: 8px; transition: background-color 0.2s, opacity 0.2s; }
         button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #cccccc; cursor: not-allowed; opacity: 0.6; }
         button.secondary { background-color: #dc3545; }
         button.secondary:hover { background-color: #c82333; }
+        button.tertiary { background-color: #28a745; }
+        button.tertiary:hover { background-color: #218838; }
+        button.options { background-color: #ffc107; color: #212529; }
+        button.options:hover { background-color: #e0a800; }
+        button.inactive { background-color: #6c757d; }
+        button.inactive:hover { background-color: #5a6268; }
         h3 { border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 0; }
-        #vectorList { min-height: 100px; max-height: 195px; overflow-y: auto; }
+        #vectorList { min-height: 100px; max-height: 220px; overflow-y: auto; }
         .vector-item { display: flex; align-items: flex-start; padding: 5px 0; font-size: 14px; font-family: 'Courier New', Courier, monospace; }
         .color-swatch { width: 15px; height: 15px; border-radius: 3px; margin-right: 10px; border: 1px solid #777; flex-shrink: 0; margin-top: 3px; }
+        
+        .vector-name { text-decoration: overline; }
+
+        #overlay-toggles {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .toggle-box {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+
+        .toggle-box label {
+            cursor: pointer;
+        }
+
+        #legenda-canvas {
+            font-style: italic;
+            color: #555;
+            font-size: 11px;
+            position: absolute;
+            width: 1000px;
+            top: 607px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #fff;
+            padding: 20px 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            text-align: center;
+            position: relative;
+            min-width: 300px;
+        }
+        .modal-content h3 {
+            margin-top: 0;
+            font-size: 1.2em;
+            color: #333;
+        }
+        .modal-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #888;
+        }
+        .modal-close:hover {
+            color: #333;
+        }
+        #opcoesProdutoVetorial button {
+            margin: 5px;
+            width: auto;
+            padding: 10px 15px;
+        }
+        .btn-vector-name { text-decoration: overline; }
+        
+        .modal-input-group {
+            display: grid;
+            grid-template-columns: 100px 1fr;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            text-align: left;
+        }
+        .modal-input-group label {
+            font-weight: bold;
+        }
+        .modal-input-group input {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        #welcome-instructions {
+            text-align: left;
+            margin-top: 20px;
+            line-height: 1.6;
+        }
+        #welcome-instructions ul {
+            padding-left: 20px;
+            list-style-type: '→ ';
+        }
+
     </style>
 </head>
 <body>
-    <canvas id="planoCartesiano" width="1000" height="600"></canvas>
+
+    <div id="modalBoasVindas" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" data-modal-id="modalBoasVindas">&times;</span>
+            <h3>Bem-vindos ao LabVector!</h3>
+            <p>Este é um laboratório virtual interativo para o estudo de vetores e suas operações fundamentais.</p>
+            <div id="welcome-instructions">
+                <h4>Instruções de Uso:</h4>
+                <ul>
+                    <li><b>Adicionar Vetor:</b> Dê um clique duplo com o botão esquerdo do mouse no plano.</li>
+                    <li><b>Mover Vetor:</b> Clique no corpo do vetor e arraste-o para a posição desejada.</li>
+                    <li><b>Alterar Vetor:</b> Clique para selecionar um vetor e depois use o botão "Alterar Vetor".</li>
+                    <li><b>Deletar Vetor:</b> Clique com o botão direito do mouse sobre o vetor que deseja excluir.</li>
+                </ul>
+                <p>Explore as operações como <b>vetor resultante</b>, <b>produto escalar</b> e <b>produto vetorial</b> usando os botões de controle.</p>
+            </div>
+            <button id="botaoFecharBoasVindas" style="margin-top: 20px;">Começar</button>
+        </div>
+    </div>
+
+
+    <div id="canvas-container">
+        <canvas id="planoCartesiano" width="1000" height="600"></canvas>
+        <div id="legenda-canvas">Produto educional MATIEF - UFERSA</div>
+        <div id="overlay-toggles">
+            <div class="toggle-box">
+                <input type="checkbox" id="checkboxProjecao">
+                <label for="checkboxProjecao">Mostrar Projeções</label>
+            </div>
+            <div class="toggle-box">
+                <input type="checkbox" id="checkboxVersor">
+                <label for="checkboxVersor">Mostrar Versores</label>
+            </div>
+        </div>
+    </div>
     <div id="ui-panel">
         <div class="control-box">
             <h3>Controles</h3>
-            <p class="info">
-                <b>Clique duplo:</b> Adiciona um vetor.<br>
-                <b>Arrastar origem:</b> Altera a origem.<br>
-                <b>Arrastar ponta:</b> Altera o vetor.<br>
-                <b>Arrastar corpo:</b> Move o vetor.
-            </p>
-            <button id="botaoCalcularResultante">Calcular Vetor Resultante</button>
-            <button id="botaoResetar" class="secondary">Limpar Tudo</button>
+            <button id="botaoOpcoes" class="options" disabled>Alterar Vetor</button>
+            <button id="botaoCalcularResultante">Vetor Resultante</button>
+            <button id="botaoProdutoEscalar">Produto Escalar</button>
+            <button id="botaoProdutoVetorial">Produto Vetorial</button>
+            <button id="botaoResetar" class="secondary">Reiniciar</button>
+            <button id="botaoPlanoPolar" class="tertiary">Coordenadas Polares</button> 
         </div>
         <div id="vectorList" class="control-box"></div>
     </div>
+
+    <div id="modalProdutoVetorial" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" data-modal-id="modalProdutoVetorial">&times;</span>
+            <h3>Escolha a Ordem do Produto Vetorial</h3>
+            <div id="opcoesProdutoVetorial"></div>
+        </div>
+    </div>
+
+    <div id="modalEditarVetor" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" data-modal-id="modalEditarVetor">&times;</span>
+            <h3 id="tituloModalEditar">Editar Vetor</h3>
+            <div class="modal-input-group">
+                <label for="compX" id="labelCompX">Comp. dx:</label>
+                <input type="number" id="compX" step="0.1" oninput="atualizarValoresEdicao('componentes')">
+            </div>
+            <div class="modal-input-group">
+                <label for="compY" id="labelCompY">Comp. dy:</label>
+                <input type="number" id="compY" step="0.1" oninput="atualizarValoresEdicao('componentes')">
+            </div>
+            <hr style="margin: 20px 0;">
+            <div class="modal-input-group">
+                <label for="modulo">Módulo:</label>
+                <input type="number" id="modulo" step="0.1" oninput="atualizarValoresEdicao('polar')">
+            </div>
+            <div class="modal-input-group">
+                <label for="angulo">Ângulo (°):</label>
+                <input type="number" id="angulo" step="1" oninput="atualizarValoresEdicao('polar')">
+            </div>
+            <button id="botaoSalvarVetor" style="background-color: #28a745;">Salvar Alterações</button>
+        </div>
+    </div>
+    
+    <input type="color" id="colorPicker" style="display: none;">
 
     <script>
         const canvas = document.getElementById("planoCartesiano");
         const ctx = canvas.getContext("2d");
         const vectorListDiv = document.getElementById("vectorList");
+        
+        // Modais
+        const modalBoasVindas = document.getElementById("modalBoasVindas");
+        const modalProdutoVetorial = document.getElementById("modalProdutoVetorial");
+        const modalEditarVetor = document.getElementById("modalEditarVetor");
+        const modalOptions = document.getElementById("opcoesProdutoVetorial");
+        document.querySelectorAll(".modal-close").forEach(el => {
+            el.addEventListener('click', () => document.getElementById(el.dataset.modalId).style.display = 'none');
+        });
+
+        document.getElementById('botaoFecharBoasVindas').addEventListener('click', () => {
+            modalBoasVindas.style.display = 'none';
+        });
+
+        const colorPicker = document.getElementById('colorPicker');
+        const botaoOpcoes = document.getElementById('botaoOpcoes');
 
         const gridSize = 40;
         const origin = { x: canvas.width / 2, y: canvas.height / 2 };
@@ -48,20 +249,30 @@
 
         let vetores = [];
         let vetorResultante = null;
+        let produtoVetorialResult = null;
+        let dotProductInfo = null;
+        let angleInfo = null;
+        let versoresInfo = [];
+        let mostrarVersores = false;
+        let areaParalelogramoInfo = null;
         let isDragging = false;
         let selectedVector = null;
         let selectedPoint = null;
         let dragOffset = { x: 0, y: 0 };
+        let mostrarProjecao = false;
+        let vetorParaMudarCor = null;
+        let modoPlano = 'cartesiano';
+        let vetorAtualmenteSelecionado = null;
+        let vetorParaEditar = null;
+        let hoveredVector = null;
+        let mousePos = { x: 0, y: 0 };
+        let statusMessage = '';
+        let messageTimeout = null;
+        let tooltip = { visible: false, text: '', x: 0, y: 0, timeout: null };
 
         const imagem = new Image();
         imagem.src = 'vector.png';
-
-        const imagemConfig = {
-            x: 1,
-            y: 1,
-            largura: 220,
-            altura: 140
-        };
+        const imagemConfig = { x: 5, y: 5, largura: 190, altura: 70 };
 
         const toCanvasX = (x) => origin.x + x * gridSize;
         const toCanvasY = (y) => origin.y - y * gridSize;
@@ -69,32 +280,28 @@
         const fromCanvasY = (canvasY) => (origin.y - canvasY) / gridSize;
 
         function gerarCorAleatoria() {
-            const hue = Math.floor(Math.random() * 300) + 30;
+            const hue = Math.floor(Math.random() * 360);
             return `hsl(${hue}, 90%, 50%)`;
         }
 
-        // <<< NOVA FUNÇÃO DE SNAP >>>
+        function clarearCor(corHsl) {
+            const match = corHsl.match(/hsl\((\d+),\s*(\d+)%?/);
+            if (!match) return corHsl; 
+            const [_, hue, saturation] = match;
+            return `hsl(${hue}, ${saturation}%, 75%)`;
+        }
+        
         function snapAosPontos(mouseX, mouseY, vetorAtual) {
-            const snapRadius = 0.5; // Raio do "ímã"
+            const snapRadius = 0.5;
             let snappedPos = { x: mouseX, y: mouseY };
-
             let dist = Math.sqrt(mouseX**2 + mouseY**2);
-            if (dist < snapRadius) {
-                return { x: 0, y: 0 };
-            }
-
+            if (dist < snapRadius) return { x: 0, y: 0 };
             for (const v of vetores) {
-                if (v === vetorAtual) {
-                    continue;
-                }
+                if (v === vetorAtual) continue;
                 dist = Math.sqrt((mouseX - v.x1)**2 + (mouseY - v.y1)**2);
-                if (dist < snapRadius) {
-                    return { x: v.x1, y: v.y1 };
-                }
+                if (dist < snapRadius) return { x: v.x1, y: v.y1 };
                 dist = Math.sqrt((mouseX - v.x2)**2 + (mouseY - v.y2)**2);
-                if (dist < snapRadius) {
-                    return { x: v.x2, y: v.y2 };
-                }
+                if (dist < snapRadius) return { x: v.x2, y: v.y2 };
             }
             return snappedPos;
         }
@@ -116,54 +323,607 @@
             for (let i = -Math.floor(origin.y / gridSize); i <= Math.floor(origin.y / gridSize); i++) { if (i !== 0) ctx.fillText(i, toCanvasX(0) - 5, toCanvasY(i)); }
         }
 
-        function desenharSeta(x1, y1, x2, y2, nome, corLinha, corPonta) {
-            if (corPonta === undefined) { corPonta = corLinha; }
-            const [cx1, cy1, cx2, cy2] = [toCanvasX(x1), toCanvasY(y1), toCanvasX(x2), toCanvasY(y2)];
-            ctx.beginPath(); ctx.moveTo(cx1, cy1); ctx.lineTo(cx2, cy2);
-            ctx.strokeStyle = corLinha; ctx.lineWidth = 3; ctx.stroke();
-            const angulo = Math.atan2(cy2 - cy1, cx2 - cx1); const tamanhoSeta = 10;
-            ctx.beginPath(); ctx.moveTo(cx2, cy2);
-            ctx.lineTo(cx2 - tamanhoSeta * Math.cos(angulo - Math.PI / 6), cy2 - tamanhoSeta * Math.sin(angulo - Math.PI / 6));
-            ctx.lineTo(cx2 - tamanhoSeta * Math.cos(angulo + Math.PI / 6), cy2 - tamanhoSeta * Math.sin(angulo + Math.PI / 6));
-            ctx.lineTo(cx2, cy2); ctx.fillStyle = corPonta; ctx.fill();
-            if (nome) { ctx.font = "16px Arial"; ctx.fillStyle = "#000"; ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.fillText(nome, cx2 + 10, cy2); }
+        function desenharGridPolar() {
+            ctx.strokeStyle = "#e0e0e0"; 
+            ctx.lineWidth = 1;
+            
+            const maxRadius = Math.ceil(fromCanvasX(canvas.width) - fromCanvasX(origin.x));
+            for (let i = 1; i <= maxRadius; i++) {
+                ctx.beginPath();
+                ctx.arc(origin.x, origin.y, i * gridSize, 0, 2 * Math.PI);
+                ctx.stroke();
+            }
+
+            const angulos = [0, 15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180, 195, 210, 225, 240, 255, 270, 285, 300, 315, 330, 345];
+            const R = Math.sqrt(origin.x**2 + origin.y**2);
+            angulos.forEach(deg => {
+                const rad = deg * Math.PI / 180;
+                ctx.beginPath();
+                ctx.moveTo(origin.x, origin.y);
+                ctx.lineTo(origin.x + R * Math.cos(rad), origin.y - R * Math.sin(rad));
+                ctx.stroke();
+            });
+
+            ctx.strokeStyle = "#aaa"; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(0, origin.y); ctx.lineTo(canvas.width, origin.y); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(origin.x, 0); ctx.lineTo(origin.x, canvas.height); ctx.stroke();
+
+            ctx.font = "12px Arial"; ctx.fillStyle = "#333";
+            ctx.textAlign = "center"; ctx.textBaseline = "top";
+            for (let i = 1; i <= maxRadius; i++) {
+                ctx.fillText(i, toCanvasX(i), toCanvasY(0) + 5);
+            }
+            ctx.textAlign = "left"; ctx.textBaseline = "middle";
+            const labelRadius = toCanvasY(0) - R - 15;
+            angulos.forEach(deg => {
+                if (deg % 30 !== 0 && deg % 45 !== 0 && deg !== 15) return;
+                if (deg === 0 || deg === 180) return;
+                const rad = deg * Math.PI / 180;
+                const textX = origin.x + (R + 10) * Math.cos(-rad);
+                const textY = origin.y + (R + 10) * Math.sin(-rad);
+                ctx.fillText(`${deg}°`, textX, textY);
+            });
         }
         
+        function desenharRepresentacaoPolar(v) {
+            const dx = v.x2 - v.x1;
+            const dy = v.y2 - v.y1;
+            
+            if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01) return;
+
+            const r = Math.sqrt(dx**2 + dy**2);
+            const thetaRad = Math.atan2(dy, dx);
+            let thetaDeg = thetaRad * (180 / Math.PI);
+            if (thetaDeg < 0) thetaDeg += 360;
+
+            const cx_origem = toCanvasX(v.x1);
+            const cy_origem = toCanvasY(v.y1);
+
+            const arcRadius = Math.min(gridSize * 1.2, r * gridSize * 0.4); 
+            
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(cx_origem, cy_origem, arcRadius, 0, -thetaRad, thetaRad > 0);
+            ctx.strokeStyle = '#007bff';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.stroke();
+            ctx.restore();
+
+            const labelAngle = -thetaRad / 2;
+            const textRadius = arcRadius + 15;
+            const textX = cx_origem + textRadius * Math.cos(labelAngle);
+            const textY = cy_origem + textRadius * Math.sin(labelAngle);
+
+            ctx.fillStyle = '#000';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`θ=${thetaDeg.toFixed(1)}°`, textX, textY);
+            
+            const midVecX = toCanvasX(v.x1 + dx / 2);
+            const midVecY = toCanvasY(v.y1 + dy / 2);
+
+            const perpAngle = thetaRad + Math.PI / 2;
+            const labelOffset = 25; 
+            const offsetX = Math.cos(perpAngle) * labelOffset;
+            const offsetY = -Math.sin(perpAngle) * labelOffset;
+
+            ctx.fillStyle = '#000';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = (Math.abs(thetaDeg - 90) < 45 || Math.abs(thetaDeg - 270) < 45) ? 'center' : (offsetX > 0 ? 'left' : 'right');
+            
+            ctx.fillText(`r=${r.toFixed(2)}`, midVecX + offsetX, midVecY + offsetY);
+        }
+
+        function desenharTextoComOverline(texto, x, y) {
+            const metrics = ctx.measureText(texto);
+            const textWidth = metrics.width;
+            const textHeight = metrics.actualBoundingBoxAscent;
+            
+            ctx.fillText(texto, x, y);
+            
+            ctx.save();
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = ctx.fillStyle;
+            ctx.beginPath();
+            ctx.moveTo(x - textWidth / 2, y - textHeight - 1);
+            ctx.lineTo(x + textWidth / 2, y - textHeight - 1);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function desenharSeta(x1, y1, x2, y2, nome, corLinha) {
+            const corPonta = corLinha;
+            const [cx1, cy1, cx2, cy2] = [toCanvasX(x1), toCanvasY(y1), toCanvasX(x2), toCanvasY(y2)];
+            
+            ctx.beginPath(); 
+            ctx.moveTo(cx1, cy1); 
+            ctx.lineTo(cx2, cy2);
+            ctx.strokeStyle = corLinha; 
+            ctx.lineWidth = 3; 
+            ctx.stroke();
+
+            const angulo = Math.atan2(cy2 - cy1, cx2 - cx1); 
+            const tamanhoSeta = 10;
+            ctx.beginPath(); 
+            ctx.moveTo(cx2, cy2);
+            ctx.lineTo(cx2 - tamanhoSeta * Math.cos(angulo - Math.PI / 6), cy2 - tamanhoSeta * Math.sin(angulo - Math.PI / 6));
+            ctx.lineTo(cx2 - tamanhoSeta * Math.cos(angulo + Math.PI / 6), cy2 - tamanhoSeta * Math.sin(angulo + Math.PI / 6));
+            ctx.lineTo(cx2, cy2); 
+            ctx.fillStyle = corPonta; 
+            ctx.fill();
+            
+            if (nome) { 
+                const textX = (cx1 + cx2) / 2;
+                const textY = (cy1 + cy2) / 2;
+                
+                ctx.font = "bold 16px Arial";
+                ctx.fillStyle = '#000';
+                ctx.textAlign = "center";
+                ctx.textBaseline = "bottom";
+
+                if (nome === 'Res') {
+                     ctx.fillText('R', textX - 5, textY - 10);
+                     desenharTextoComOverline('es', textX + 8, textY - 10);
+                } else {
+                     desenharTextoComOverline(nome, textX, textY - 10);
+                }
+            }
+        }
+        
+        function desenharProjecao(v) {
+            const [cx1, cy1] = [toCanvasX(v.x1), toCanvasY(v.y1)];
+            const [cx2, cy2] = [toCanvasX(v.x2), toCanvasY(v.y2)];
+            const cx_corner = cx2;
+            const cy_corner = cy1;
+
+            ctx.save();
+            ctx.setLineDash([4, 4]);
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = v.cor;
+
+            ctx.beginPath(); ctx.moveTo(cx1, cy1); ctx.lineTo(cx_corner, cy_corner); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(cx_corner, cy_corner); ctx.lineTo(cx2, cy2); ctx.stroke();
+            
+            ctx.restore();
+
+            ctx.font = "14px Arial"; ctx.fillStyle = v.cor;
+            ctx.textAlign = "center";
+            ctx.textBaseline = cy2 > cy1 ? "bottom" : "top";
+            const offsetY = cy2 > cy1 ? -5 : 15;
+            ctx.fillText(v.nome + '\u2093', (cx1 + cx_corner) / 2, cy_corner + offsetY);
+            ctx.textBaseline = "middle";
+            ctx.textAlign = cx2 > cx1 ? "left" : "right";
+            const offsetX = cx2 > cx1 ? 5 : -5;
+            ctx.fillText(v.nome + '\u02B8', cx_corner + offsetX, (cy_corner + cy2) / 2);
+        }
+
+        function desenharProdutoVetorial(resultado) {
+            // Se o módulo do produto vetorial (componente z) for muito pequeno (próximo de zero), não desenha nada.
+            // Isso acontece quando os vetores são paralelos ou antiparalelos (0 ou 180 graus).
+            if (Math.abs(resultado.z) < 0.01) {
+                return;
+            }
+
+            const cx = toCanvasX(resultado.origem.x);
+            const cy = toCanvasY(resultado.origem.y);
+            const radius = 15;
+            const cor = "purple";
+
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
+            ctx.strokeStyle = cor;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            if (resultado.z > 0.01) { // Saindo do plano (ponto)
+                ctx.beginPath();
+                ctx.arc(cx, cy, 3, 0, 2 * Math.PI);
+                ctx.fillStyle = cor;
+                ctx.fill();
+            } else if (resultado.z < -0.01) { // Entrando no plano (X)
+                ctx.beginPath();
+                ctx.moveTo(cx - radius / 1.7, cy - radius / 1.7);
+                ctx.lineTo(cx + radius / 1.7, cy + radius / 1.7);
+                ctx.moveTo(cx + radius / 1.7, cy - radius / 1.7);
+                ctx.lineTo(cx - radius / 1.7, cy + radius / 1.7);
+                ctx.strokeStyle = cor;
+                ctx.stroke();
+            }
+        }
+        
+        function desenharAngulo(info) {
+            const cx = toCanvasX(info.x);
+            const cy = toCanvasY(info.y);
+            const radius = 25;
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, info.startAngle, info.endAngle);
+            ctx.strokeStyle = '#009688'; ctx.lineWidth = 2; ctx.stroke();
+            const midAngle = info.startAngle + (info.sweep / 2);
+            const textRadius = radius + 20;
+            const textX = cx + textRadius * Math.cos(midAngle);
+            const textY = cy + textRadius * Math.sin(midAngle);
+            ctx.font = "14px Arial"; ctx.fillStyle = '#009688';
+            ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText(`${info.angleDeg.toFixed(1)}°`, textX, textY);
+        }
+        
+        function desenharVersor(info) {
+            const corClara = clarearCor(info.corOriginal);
+
+            ctx.save();
+            desenharSeta(info.x1, info.y1, info.x2, info.y2, null, corClara);
+            
+            ctx.font = "italic bold 18px Arial";
+            ctx.fillStyle = corClara;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "bottom";
+            const textX = toCanvasX((info.x1 + info.x2) / 2);
+            const textY = toCanvasY((info.y1 + info.y2) / 2);
+            
+            ctx.fillText(info.nome + '\u0302', textX, textY - 20);
+            
+            ctx.restore();
+        }
+
+        function desenharAreaParalelogramo(info) {
+            const p1_canvas = { x: toCanvasX(info.p1.x), y: toCanvasY(info.p1.y) };
+            const p2_canvas = { x: toCanvasX(info.p2.x), y: toCanvasY(info.p2.y) };
+            const p3_canvas = { x: toCanvasX(info.p3.x), y: toCanvasY(info.p3.y) };
+            const p4_canvas = { x: toCanvasX(info.p4.x), y: toCanvasY(info.p4.y) };
+
+            ctx.save();
+            
+            ctx.beginPath();
+            ctx.moveTo(p1_canvas.x, p1_canvas.y);
+            ctx.lineTo(p2_canvas.x, p2_canvas.y);
+            ctx.lineTo(p4_canvas.x, p4_canvas.y);
+            ctx.lineTo(p3_canvas.x, p3_canvas.y);
+            ctx.closePath();
+
+            ctx.fillStyle = 'rgba(200, 200, 200, 0.5)';
+            ctx.fill();
+
+            ctx.setLineDash([5, 5]);
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.restore();
+
+            const centerX = toCanvasX((info.p1.x + info.p4.x) / 2);
+            const centerY = toCanvasY((info.p1.y + info.p4.y) / 2);
+            
+            ctx.font = 'bold 16px Arial';
+            ctx.fillStyle = 'black';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`Área = ${info.area.toFixed(2)} u.a.`, centerX, centerY);
+        }
+
+        function desenharCaixaDeTexto(texto, x, y, corFundo = '#f8f9fa', corBorda = '#adb5bd') {
+            ctx.save();
+            ctx.font = '16px "Courier New", Courier, monospace';
+            const padding = 10;
+
+            // Calcula a largura total do texto, considerando a lógica do overline
+            let totalWidth = 0;
+            const parts = texto.split(/(\w\u0305)/); // Divide o texto para encontrar os vetores com overline
+            parts.forEach(part => {
+                if (part.length === 2 && part.charCodeAt(1) === 0x0305) {
+                    totalWidth += ctx.measureText(part.charAt(0)).width;
+                } else {
+                    totalWidth += ctx.measureText(part).width;
+                }
+            });
+
+            const boxWidth = totalWidth + padding * 2;
+            const boxHeight = 20 + padding * 2;
+
+            // Desenha a caixa
+            ctx.fillStyle = corFundo;
+            ctx.strokeStyle = corBorda;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.rect(x, y, boxWidth, boxHeight);
+            ctx.fill();
+            ctx.stroke();
+
+            // Prepara para desenhar o texto
+            ctx.fillStyle = '#212529';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+
+            // Lógica para desenhar o texto parte por parte, aplicando o overline
+            let current_x = x + padding;
+            const text_y = y + boxHeight / 2;
+
+            parts.forEach(part => {
+                // Se a parte é um vetor (letra + código de overline)
+                if (part.length === 2 && part.charCodeAt(1) === 0x0305) {
+                    const vectorName = part.charAt(0);
+                    const metrics = ctx.measureText(vectorName);
+                    const textHeight = metrics.actualBoundingBoxAscent;
+                    ctx.fillText(vectorName, current_x, text_y);
+
+                    // Desenha o traço (overline)
+                    ctx.beginPath();
+                    ctx.moveTo(current_x, text_y - textHeight - 2);
+                    ctx.lineTo(current_x + metrics.width, text_y - textHeight - 2);
+                    ctx.strokeStyle = '#212529'; // Cor do traço igual à do texto
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+
+                    current_x += metrics.width;
+                } else { // Se for texto normal
+                    ctx.fillText(part, current_x, text_y);
+                    current_x += ctx.measureText(part).width;
+                }
+            });
+            
+            ctx.restore();
+        }
+
+        function desenharTooltipHover() {
+            if (tooltip.visible && !isDragging) {
+                ctx.save();
+                ctx.font = 'italic 13px Arial';
+                ctx.fillStyle = '#333';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'bottom';
+
+                let current_x = tooltip.x;
+                const y = tooltip.y;
+
+                // Divide o texto em partes para encontrar a letra com a barra
+                const parts = tooltip.text.split(/(\w\u0305)/);
+
+                parts.forEach(part => {
+                    if (part.length === 2 && part.charCodeAt(1) === 0x0305) {
+                        const vectorName = part.charAt(0);
+                        const metrics = ctx.measureText(vectorName);
+                        ctx.fillText(vectorName, current_x, y);
+
+                        // Desenha a barra (overline)
+                        ctx.beginPath();
+                        ctx.moveTo(current_x, y - metrics.actualBoundingBoxAscent - 2);
+                        ctx.lineTo(current_x + metrics.width, y - metrics.actualBoundingBoxAscent - 2);
+                        ctx.strokeStyle = '#333';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+
+                        current_x += metrics.width;
+                    } else {
+                        // Desenha o texto normal
+                        ctx.fillText(part, current_x, y);
+                        current_x += ctx.measureText(part).width;
+                    }
+                });
+                ctx.restore();
+            }
+        }
+        
+        function setStatusMessage(msg, duration = 0) {
+            if (messageTimeout) {
+                clearTimeout(messageTimeout);
+            }
+            statusMessage = msg;
+            desenharTudo();
+
+            if (duration > 0) {
+                messageTimeout = setTimeout(() => {
+                    statusMessage = '';
+                    desenharTudo();
+                }, duration);
+            }
+        }
+
+        function desenharStatusMessage() {
+            if (!statusMessage) return;
+
+            ctx.save();
+            ctx.font = 'italic 16px Arial';
+            ctx.fillStyle = '#888';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'bottom';
+
+            const x_initial = 15;
+            const y = canvas.height - 15;
+            
+            let current_x = x_initial;
+
+            const parts = statusMessage.split(/(\w\u0305)/);
+
+            parts.forEach(part => {
+                if (part.length === 2 && part.charCodeAt(1) === 0x0305) {
+                    const vectorName = part.charAt(0);
+                    const metrics = ctx.measureText(vectorName);
+                    ctx.fillText(vectorName, current_x, y);
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(current_x, y - metrics.actualBoundingBoxAscent - 2);
+                    ctx.lineTo(current_x + metrics.width, y - metrics.actualBoundingBoxAscent - 2);
+                    ctx.strokeStyle = '#888';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+
+                    current_x += metrics.width;
+                } else {
+                    ctx.fillText(part, current_x, y);
+                    current_x += ctx.measureText(part).width;
+                }
+            });
+            
+            ctx.restore();
+        }
+
         function atualizarListaVetores() {
             vectorListDiv.innerHTML = '<h3>Lista de Vetores</h3>';
-            if (vetores.length === 0 && !vetorResultante) { vectorListDiv.innerHTML += '<p style="font-size:14px; color:#888;">Nenhum vetor adicionado.</p>'; return; }
+            if (vetores.length === 0 && !vetorResultante) {
+                vectorListDiv.innerHTML += '<p style="font-size:14px; color:#888;">Nenhum vetor adicionado.</p>'; return;
+            }
+
             const f = (num) => num.toFixed(1).padStart(5, ' ');
+            
             vetores.forEach(v => {
                 const dx = v.x2 - v.x1;
                 const dy = v.y2 - v.y1;
-                const modulo = Math.sqrt(dx**2 + dy**2);
-                const item = document.createElement('div'); 
+                
+                const item = document.createElement('div');
                 item.className = 'vector-item';
-                item.innerHTML = `<div class="color-swatch" style="background-color: ${v.cor};"></div><div><b>${v.nome}:</b> (${f(v.x1)}, ${f(v.y1)}) → (${f(v.x2)}, ${f(v.y2)})<br>|${v.nome}| = ${modulo.toFixed(2)}</div>`;
+                let infoHtml = '';
+
+                if (modoPlano === 'cartesiano') {
+                    const modulo = Math.sqrt(dx**2 + dy**2);
+                    infoHtml = `
+                        <b><span class="vector-name">${v.nome}</span></b>: O(${f(v.x1)}, ${f(v.y1)}) → E(${f(v.x2)}, ${f(v.y2)})<br>
+                        Comp: (${f(dx)}, ${f(dy)}) | |<b><span class="vector-name">${v.nome}</span></b>| = ${modulo.toFixed(2)}`;
+                } else {
+                    const r = Math.sqrt(dx**2 + dy**2);
+                    let theta = Math.atan2(dy, dx) * (180 / Math.PI);
+                    if (theta < 0) theta += 360;
+                    infoHtml = `
+                        <b><span class="vector-name">${v.nome}</span></b>: |<b><span class="vector-name">${v.nome}</span></b>| = ${r.toFixed(2)}<br>
+                        Ângulo (θ) = ${theta.toFixed(1)}°`;
+                }
+
+                item.innerHTML = `
+                    <div class="color-swatch" style="background-color: ${v.cor}; cursor: pointer;" title="Clique para mudar a cor"></div>
+                    <div>${infoHtml}</div>`;
+                
+                item.querySelector('.color-swatch').addEventListener('click', () => {
+                    vetorParaMudarCor = v;
+                    colorPicker.click();
+                });
+
                 vectorListDiv.appendChild(item);
             });
+
             if (vetorResultante) {
                 const dx = vetorResultante.x2 - vetorResultante.x1;
                 const dy = vetorResultante.y2 - vetorResultante.y1;
-                const modulo = Math.sqrt(dx**2 + dy**2);
                 const item = document.createElement('div');
                 item.className = 'vector-item';
-                item.innerHTML = `<div class="color-swatch" style="background-color: red;"></div><div><b>${vetorResultante.nome}:</b> (${f(vetorResultante.x1)}, ${f(vetorResultante.y1)}) → (${f(vetorResultante.x2)}, ${f(vetorResultante.y2)})<br>|${vetorResultante.nome}| = ${modulo.toFixed(2)}</div>`;
+                let infoResultanteHtml = '';
+
+                if (modoPlano === 'cartesiano') {
+                    const modulo = Math.sqrt(dx**2 + dy**2);
+                    infoResultanteHtml = `
+                        <b><span class="vector-name">R</span>es</b>: O(${f(vetorResultante.x1)}, ${f(vetorResultante.y1)}) → E(${f(vetorResultante.x2)}, ${f(vetorResultante.y2)})<br>
+                        Comp: (${f(dx)}, ${f(dy)}) | |<b><span class="vector-name">R</span>es</b>| = ${modulo.toFixed(2)}`;
+                } else {
+                    const r = Math.sqrt(dx**2 + dy**2);
+                    let theta = Math.atan2(dy, dx) * (180 / Math.PI);
+                    if (theta < 0) theta += 360;
+                    infoResultanteHtml = `
+                        <b><span class="vector-name">R</span>es</b>: |<b><span class="vector-name">R</span>es</b>| = ${r.toFixed(2)}<br>
+                        Ângulo (θ) = ${theta.toFixed(1)}°`;
+                }
+                
+                item.innerHTML = `
+                    <div class="color-swatch" style="background-color: red;"></div>
+                    <div>${infoResultanteHtml}</div>`;
                 vectorListDiv.appendChild(item);
             }
+        }
+
+        function limparResultadosCalculados() {
+            vetorResultante = null;
+            produtoVetorialResult = null;
+            dotProductInfo = null;
+            angleInfo = null;
+            versoresInfo = [];
+            areaParalelogramoInfo = null;
         }
 
         function desenharTudo() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            desenharGrid();
+            
+            if (modoPlano === 'cartesiano') {
+                desenharGrid();
+            } else {
+                desenharGridPolar();
+            }
+
             if (imagem.complete && imagem.naturalWidth > 0) {
                 ctx.drawImage(imagem, imagemConfig.x, imagemConfig.y, imagemConfig.largura, imagemConfig.altura);
             }
-            vetores.forEach(v => { desenharSeta(v.x1, v.y1, v.x2, v.y2, v.nome, v.cor); });
-            if (vetorResultante) { desenharSeta(vetorResultante.x1, vetorResultante.y1, vetorResultante.x2, vetorResultante.y2, null, 'red'); }
+            
+            if (mostrarProjecao && modoPlano === 'cartesiano') {
+                vetores.forEach(v => desenharProjecao(v));
+            }
+            
+            if (modoPlano === 'polar') {
+                vetores.forEach(v => desenharRepresentacaoPolar(v));
+                if (vetorResultante) {
+                    const resAsVector = { ...vetorResultante, cor: 'red' };
+                    desenharRepresentacaoPolar(resAsVector);
+                }
+            }
+
+            vetores.forEach(v => { 
+                desenharSeta(v.x1, v.y1, v.x2, v.y2, v.nome, v.cor); 
+            });
+            if (vetorResultante) { 
+                desenharSeta(vetorResultante.x1, vetorResultante.y1, vetorResultante.x2, vetorResultante.y2, 'Res', 'red'); 
+            }
+
+            if (areaParalelogramoInfo) {
+                desenharAreaParalelogramo(areaParalelogramoInfo);
+            }
+            
+            if (mostrarVersores) {
+                versoresInfo.forEach(info => desenharVersor(info));
+            }
+            if (produtoVetorialResult) { desenharProdutoVetorial(produtoVetorialResult); }
+            if (angleInfo) { desenharAngulo(angleInfo); }
+            
+            if (dotProductInfo) {
+                desenharCaixaDeTexto(dotProductInfo.text, dotProductInfo.x, dotProductInfo.y, '#e7f5ff', '#007bff');
+            }
+            if (produtoVetorialResult && produtoVetorialResult.text) {
+                desenharCaixaDeTexto(produtoVetorialResult.text, produtoVetorialResult.x, produtoVetorialResult.y, '#f3e8ff', '#8428f0');
+            }
+
             atualizarListaVetores();
+            desenharStatusMessage();
+            desenharTooltipHover();
         }
 
+        function verificarConexaoEAngulo() {
+            const parConectado = encontrarParConectado();
+            if (parConectado && parConectado.tipo === 'origem-origem') {
+                const v1 = parConectado.v1;
+                const v2 = parConectado.v2;
+                const dx1 = v1.x2 - v1.x1; const dy1 = v1.y2 - v1.y1;
+                const dx2 = v2.x2 - v2.x1; const dy2 = v2.y2 - v2.y1;
+                const dot = dx1 * dx2 + dy1 * dy2;
+                const mag1 = Math.sqrt(dx1**2 + dy1**2);
+                const mag2 = Math.sqrt(dx2**2 + dy2**2);
+                if (mag1 === 0 || mag2 === 0) { angleInfo = null; return; }
+                const cosTheta = Math.max(-1, Math.min(1, dot / (mag1 * mag2)));
+                const angleRad = Math.acos(cosTheta);
+                const angleV1 = Math.atan2(-dy1, dx1);
+                const angleV2 = Math.atan2(-dy2, dx2);
+                let start = angleV1;
+                let end = angleV2;
+                let sweep = end - start;
+                if (Math.abs(sweep) > Math.PI) {
+                    if (sweep > 0) { start += 2 * Math.PI; } else { end += 2 * Math.PI; }
+                }
+                angleInfo = {
+                    x: v1.x1, y: v1.y1,
+                    angleDeg: angleRad * (180 / Math.PI),
+                    startAngle: Math.min(start, end),
+                    endAngle: Math.max(start, end),
+                    sweep: Math.abs(start - end)
+                };
+            } else {
+                angleInfo = null;
+            }
+        }
+        
         function distToSegment(p, v, w) {
             const l2 = (v.x - w.x)**2 + (v.y - w.y)**2; if (l2 === 0) return Math.sqrt((p.x - v.x)**2 + (p.y - v.y)**2);
             let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
@@ -172,78 +932,609 @@
             return Math.sqrt((p.x - proj.x)**2 + (p.y - proj.y)**2);
         }
 
+        function findVectorAt(cartesianPoint) {
+            for (let i = vetores.length - 1; i >= 0; i--) {
+                const v = vetores[i];
+                if (distToSegment(cartesianPoint, {x: v.x1, y: v.y1}, {x: v.x2, y: v.y2}) * gridSize < clickTolerance) {
+                    return v;
+                }
+            }
+            return null;
+        }
+
+        function deletarVetor(vetorParaDeletar) {
+            if (!vetorParaDeletar) return;
+
+            if (vetorParaDeletar === vetorResultante) {
+                alert("O vetor resultante não pode ser deletado diretamente. Limpe os vetores originais.");
+                return;
+            }
+
+            const index = vetores.indexOf(vetorParaDeletar);
+            if (index > -1) {
+                const nomeVetorExcluido = vetorParaDeletar.nome;
+                
+                vetores.splice(index, 1);
+                vetores.forEach((v, i) => {
+                    v.nome = String.fromCharCode(97 + i);
+                });
+                
+                limparResultadosCalculados();
+                vetorAtualmenteSelecionado = null;
+                botaoOpcoes.disabled = true;
+                verificarConexaoEAngulo();
+                
+                setStatusMessage(`Vetor ${nomeVetorExcluido}\u0305 excluído`, 2000);
+            }
+        }
+
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const mouseCartesian = { 
+                x: fromCanvasX(e.clientX - rect.left), 
+                y: fromCanvasY(e.clientY - rect.top) 
+            };
+
+            const vectorToDelete = findVectorAt(mouseCartesian);
+
+            if (vectorToDelete) {
+                if (confirm(`Deseja realmente excluir o vetor ${vectorToDelete.nome}?`)) {
+                    deletarVetor(vectorToDelete);
+                }
+            }
+        });
+
         canvas.addEventListener('dblclick', (e) => {
             const rect = canvas.getBoundingClientRect();
             const mouseX = fromCanvasX(e.clientX - rect.left); const mouseY = fromCanvasY(e.clientY - rect.top);
-            const novoVetor = { x1: mouseX, y1: mouseY, x2: mouseX + 1, y2: mouseY + 1, nome: String.fromCharCode(65 + vetores.length), cor: gerarCorAleatoria() };
-            vetores.push(novoVetor); vetorResultante = null; desenharTudo();
+            const novoVetor = { x1: mouseX, y1: mouseY, x2: mouseX + 1, y2: mouseY + 1, nome: String.fromCharCode(97 + vetores.length), cor: gerarCorAleatoria() };
+            vetores.push(novoVetor);
+            
+            setStatusMessage(`Vetor ${novoVetor.nome}\u0305 adicionado`, 2000);
+
+            limparResultadosCalculados();
+            verificarConexaoEAngulo();
         });
 
         canvas.addEventListener('mousedown', (e) => {
             const rect = canvas.getBoundingClientRect();
             const mouseCanvas = { x: e.clientX - rect.left, y: e.clientY - rect.top };
             const mouseCartesian = { x: fromCanvasX(mouseCanvas.x), y: fromCanvasY(mouseCanvas.y) };
-            for (let i = vetores.length - 1; i >= 0; i--) {
-                const v = vetores[i];
-                const startPointCanvas = { x: toCanvasX(v.x1), y: toCanvasY(v.y1) };
-                const endPointCanvas = { x: toCanvasX(v.x2), y: toCanvasY(v.y2) };
-                if (Math.sqrt((mouseCanvas.x - endPointCanvas.x)**2 + (mouseCanvas.y - endPointCanvas.y)**2) < clickTolerance) { isDragging = true; selectedVector = v; selectedPoint = 'end'; canvas.style.cursor = 'crosshair'; return; }
-                if (Math.sqrt((mouseCanvas.x - startPointCanvas.x)**2 + (mouseCanvas.y - startPointCanvas.y)**2) < clickTolerance) { isDragging = true; selectedVector = v; selectedPoint = 'start'; canvas.style.cursor = 'crosshair'; return; }
-                if (distToSegment(mouseCartesian, {x: v.x1, y: v.y1}, {x: v.x2, y: v.y2}) * gridSize < clickTolerance) { isDragging = true; selectedVector = v; selectedPoint = 'body'; dragOffset = { x: mouseCartesian.x - v.x1, y: mouseCartesian.y - v.y1 }; canvas.style.cursor = 'move'; return; }
+            
+            let vetorClicado = findVectorAt(mouseCartesian);
+            
+            if (!vetorClicado && vetorResultante) {
+                 if (distToSegment(mouseCartesian, {x: vetorResultante.x1, y: vetorResultante.y1}, {x: vetorResultante.x2, y: vetorResultante.y2}) * gridSize < clickTolerance) {
+                    vetorClicado = vetorResultante;
+                }
             }
+            
+            vetorAtualmenteSelecionado = vetorClicado;
+            botaoOpcoes.disabled = !vetorAtualmenteSelecionado || vetorAtualmenteSelecionado === vetorResultante;
+            
+            if (vetorAtualmenteSelecionado) {
+                setStatusMessage(`Vetor ${vetorAtualmenteSelecionado.nome}\u0305 selecionado`);
+            } else {
+                setStatusMessage('');
+            }
+            
+            if (vetorClicado && vetorClicado !== vetorResultante) {
+                const startPointCanvas = { x: toCanvasX(vetorClicado.x1), y: toCanvasY(vetorClicado.y1) };
+                const endPointCanvas = { x: toCanvasX(vetorClicado.x2), y: toCanvasY(vetorClicado.y2) };
+                
+                if (Math.sqrt((mouseCanvas.x - endPointCanvas.x)**2 + (mouseCanvas.y - endPointCanvas.y)**2) < clickTolerance) { 
+                    isDragging = true; selectedVector = vetorClicado; selectedPoint = 'end'; canvas.style.cursor = 'crosshair'; 
+                } else if (Math.sqrt((mouseCanvas.x - startPointCanvas.x)**2 + (mouseCanvas.y - startPointCanvas.y)**2) < clickTolerance) { 
+                    isDragging = true; selectedVector = vetorClicado; selectedPoint = 'start'; canvas.style.cursor = 'crosshair'; 
+                } else { 
+                    isDragging = true; selectedVector = vetorClicado; selectedPoint = 'body'; dragOffset = { x: mouseCartesian.x - vetorClicado.x1, y: mouseCartesian.y - vetorClicado.y1 }; canvas.style.cursor = 'move'; 
+                }
+            }
+            
+            desenharTudo();
         });
 
-        // <<< LISTENER MOUSEMOVE ATUALIZADO >>>
         canvas.addEventListener('mousemove', (e) => {
-            if (!isDragging || !selectedVector) return;
             const rect = canvas.getBoundingClientRect();
-            const mouseX = fromCanvasX(e.clientX - rect.left);
-            const mouseY = fromCanvasY(e.clientY - rect.top);
-            
-            const snappedPos = snapAosPontos(mouseX, mouseY, selectedVector);
+            const mouseCanvas = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+            const mouseCartesian = { x: fromCanvasX(mouseCanvas.x), y: fromCanvasY(mouseCanvas.y) };
+            mousePos = { x: mouseCanvas.x, y: mouseCanvas.y };
 
-            if (selectedPoint === 'end') {
-                selectedVector.x2 = snappedPos.x;
-                selectedVector.y2 = snappedPos.y;
-            } else if (selectedPoint === 'start') {
-                selectedVector.x1 = snappedPos.x;
-                selectedVector.y1 = snappedPos.y;
-            } else if (selectedPoint === 'body') {
-                const dx = selectedVector.x2 - selectedVector.x1;
-                const dy = selectedVector.y2 - selectedVector.y1;
-                selectedVector.x1 = mouseX - dragOffset.x;
-                selectedVector.y1 = mouseY - dragOffset.y;
-                selectedVector.x2 = selectedVector.x1 + dx;
-                selectedVector.y2 = selectedVector.y1 + dy;
+            if (isDragging && selectedVector) {
+                const snappedPos = snapAosPontos(mouseCartesian.x, mouseCartesian.y, selectedVector);
+                if (selectedPoint === 'end') {
+                    selectedVector.x2 = snappedPos.x; selectedVector.y2 = snappedPos.y;
+                } else if (selectedPoint === 'start') {
+                    selectedVector.x1 = snappedPos.x; selectedVector.y1 = snappedPos.y;
+                } else if (selectedPoint === 'body') {
+                    const dx = selectedVector.x2 - selectedVector.x1; const dy = selectedVector.y2 - selectedVector.y1;
+                    selectedVector.x1 = mouseCartesian.x - dragOffset.x; selectedVector.y1 = mouseCartesian.y - dragOffset.y;
+                    selectedVector.x2 = selectedVector.x1 + dx; selectedVector.y2 = selectedVector.y1 + dy;
+                }
+                limparResultadosCalculados();
+                verificarConexaoEAngulo();
+            } else {
+                const previouslyHovered = hoveredVector;
+                hoveredVector = findVectorAt(mouseCartesian);
+
+                if (hoveredVector && !previouslyHovered) {
+                    if (tooltip.timeout) clearTimeout(tooltip.timeout);
+                    tooltip.visible = true;
+                    tooltip.text = `Selecione o vetor ${hoveredVector.nome}\u0305 para alterar`;
+                    tooltip.timeout = setTimeout(() => {
+                        tooltip.visible = false;
+                        desenharTudo();
+                    }, 2000);
+                }
+
+                if(hoveredVector){
+                    tooltip.x = mousePos.x + 15;
+                    tooltip.y = mousePos.y - 15;
+                }
+
+                if(!hoveredVector){
+                    tooltip.visible = false;
+                    if(tooltip.timeout) clearTimeout(tooltip.timeout);
+                }
+                
+                canvas.style.cursor = hoveredVector ? 'pointer' : 'default';
             }
-            vetorResultante = null;
             desenharTudo();
         });
 
         const stopDragging = () => { if(isDragging) { isDragging = false; selectedVector = null; selectedPoint = null; canvas.style.cursor = 'default'; } };
         canvas.addEventListener('mouseup', stopDragging);
-        canvas.addEventListener('mouseleave', stopDragging);
+        canvas.addEventListener('mouseleave', () => {
+            stopDragging();
+            hoveredVector = null;
+            tooltip.visible = false;
+            if(tooltip.timeout) clearTimeout(tooltip.timeout);
+            desenharTudo();
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            const isModalOpen = modalEditarVetor.style.display === 'flex';
 
-        function calcularVetorResultante() {
-            if (vetores.length === 0) { vetorResultante = null; desenharTudo(); return; }
-            let resultanteDx = 0, resultanteDy = 0;
-            vetores.forEach(v => { resultanteDx += (v.x2 - v.x1); resultanteDy += (v.y2 - v.y1); });
-            const startX = vetores[0].x1, startY = vetores[0].y1;
-            const endX = startX + resultanteDx, endY = startY + resultanteDy;
-            vetorResultante = { x1: startX, y1: startY, x2: endX, y2: endY, nome: 'Res' };
+            // Atalho para DELETAR um vetor
+            if ((e.key === 'Delete' || e.key === 'Backspace') && vetorAtualmenteSelecionado && !isModalOpen) {
+                e.preventDefault(); 
+                if (confirm(`Deseja realmente excluir o vetor selecionado?`)) {
+                    deletarVetor(vetorAtualmenteSelecionado);
+                }
+            }
+
+            // Atalho para SALVAR no modal de edição
+            if (e.key === 'Enter' && isModalOpen) {
+                e.preventDefault(); 
+                salvarAlteracoesVetor();
+            }
+        });
+
+        function encontrarParConectado() {
+            if (vetores.length < 2) return null;
+            const threshold = 0.1;
+            const dist = (pA, pB) => Math.sqrt((pA.x - pB.x)**2 + (pA.y - pB.y)**2);
+
+            for (let i = 0; i < vetores.length; i++) {
+                for (let j = i + 1; j < vetores.length; j++) {
+                    const v1 = vetores[i];
+                    const v2 = vetores[j];
+                    const p1_start = { x: v1.x1, y: v1.y1 }; const p1_end = { x: v1.x2, y: v1.y2 };
+                    const p2_start = { x: v2.x1, y: v2.y1 }; const p2_end = { x: v2.x2, y: v2.y2 };
+
+                    if (dist(p1_start, p2_start) < threshold) return { v1, v2, tipo: 'origem-origem' };
+                    if (dist(p1_end, p2_start) < threshold) return { v1, v2, tipo: 'extremidade-origem' };
+                    if (dist(p2_end, p1_start) < threshold) return { v1: v2, v2: v1, tipo: 'extremidade-origem' };
+                    if (dist(p1_end, p2_end) < threshold) return { v1, v2, tipo: 'extremidade-extremidade' };
+                }
+            }
+            return null;
+        }
+
+        function calcularPosicaoCantoInferiorDireito(texto) {
+            ctx.font = '16px "Courier New", Courier, monospace';
+            const textMetrics = ctx.measureText(texto);
+            const boxWidth = textMetrics.width + 20;
+            const boxHeight = 20 + 20;
+
+            const padding = 15;
+            const posX = canvas.width - boxWidth - padding;
+            const posY = canvas.height - boxHeight - padding;
+            
+            return { x: posX, y: posY };
+        }
+
+        function calcularProdutoEscalar() {
+            limparResultadosCalculados();
+            const par = encontrarParConectado();
+            if (!par || par.tipo !== 'origem-origem') {
+                alert("Para calcular o produto escalar, as origens de dois vetores devem coincidir."); 
+                return;
+            }
+            
+            const v1 = par.v1; const v2 = par.v2;
+            const dx1 = v1.x2 - v1.x1; const dy1 = v1.y2 - v1.y1;
+            const dx2 = v2.x2 - v2.x1; const dy2 = v2.y2 - v2.y1;
+            const produto = dx1 * dx2 + dy1 * dy2;
+            
+            const textoSimples = `${v1.nome}\u0305 ⋅ ${v2.nome}\u0305 = ${produto.toFixed(2)}`;
+            
+            const position = calcularPosicaoCantoInferiorDireito(textoSimples);
+
+            dotProductInfo = {
+                text: textoSimples,
+                x: position.x,
+                y: position.y
+            };
             desenharTudo();
         }
 
-        function resetarCanvas() { vetores = []; vetorResultante = null; desenharTudo(); }
+        function executarCalculoAreaParalelogramo(v1, v2) {
+            limparResultadosCalculados();
 
-        document.getElementById('botaoCalcularResultante').addEventListener('click', calcularVetorResultante);
-        document.getElementById('botaoResetar').addEventListener('click', resetarCanvas);
+            const ax = v1.x2 - v1.x1;
+            const ay = v1.y2 - v1.y1;
+            const bx = v2.x2 - v2.x1;
+            const by = v2.y2 - v2.y1;
+
+            const area = Math.abs(ax * by - ay * bx);
+
+            areaParalelogramoInfo = {
+                p1: { x: v1.x1, y: v1.y1 },
+                p2: { x: v1.x2, y: v1.y2 },
+                p3: { x: v2.x2, y: v2.y2 },
+                p4: { x: v1.x2 + bx, y: v1.y2 + by },
+                area: area
+            };
+
+            const msg = `|${v1.nome}\u0305 &times; ${v2.nome}\u0305| = ${area.toFixed(2)} u.a.`;
+            setStatusMessage(msg, 4000);
+
+            modalProdutoVetorial.style.display = 'none';
+            desenharTudo();
+        }
         
-        imagem.onload = () => {
+        function abrirModalProdutoVetorial() {
+            const par = encontrarParConectado();
+            if (!par || par.tipo !== 'origem-origem') {
+                alert("Para calcular o produto vetorial, as origens de dois vetores devem coincidir.");
+                return;
+            }
+            
+            const v1 = par.v1;
+            const v2 = par.v2;
+
+            modalOptions.innerHTML = '';
+            
+            const btn1 = document.createElement('button');
+            btn1.innerHTML = `<span class="btn-vector-name">${v1.nome}</span> &times; <span class="btn-vector-name">${v2.nome}</span>`;
+            btn1.onclick = () => executarProdutoVetorial(v1, v2);
+            
+            const btn2 = document.createElement('button');
+            btn2.innerHTML = `<span class="btn-vector-name">${v2.nome}</span> &times; <span class="btn-vector-name">${v1.nome}</span>`;
+            btn2.onclick = () => executarProdutoVetorial(v2, v1);
+            
+            const btnArea = document.createElement('button');
+            btnArea.innerHTML = `Módulo do Produto Vetorial`;
+            btnArea.onclick = () => executarCalculoAreaParalelogramo(v1, v2);
+            
+            modalOptions.appendChild(btn1);
+            modalOptions.appendChild(btn2);
+            modalOptions.appendChild(btnArea);
+            
+            modalProdutoVetorial.style.display = 'flex';
+        }
+
+        // --- CÓDIGO ALTERADO ---
+        function executarProdutoVetorial(v1, v2) {
+            limparResultadosCalculados();
+
+            const ax = v1.x2 - v1.x1, ay = v1.y2 - v1.y1, az = 0;
+            const bx = v2.x2 - v2.x1, by = v2.y2 - v2.y1, bz = 0;
+
+            let compI = ay * bz - az * by;
+            let compJ = az * bx - ax * bz;
+            let compK = ax * by - ay * bx;
+
+            // Define uma pequena tolerância para tratar erros de ponto flutuante.
+            const epsilon = 1e-10;
+            // Se o resultado for muito próximo de zero (vetores paralelos/antiparalelos),
+            // força o valor a ser exatamente 0 para evitar resquícios como 0.01.
+            if (Math.abs(compK) < epsilon) {
+                compK = 0;
+            }
+            // As componentes I e J já são 0 por definição no plano, mas zeramos por segurança.
+            compI = 0;
+            compJ = 0;
+            
+            const i_hat = "i\u0302";
+            const j_hat = "j\u0302";
+            const k_hat = "k\u0302";
+
+            const textoResultado = `${v1.nome}\u0305 × ${v2.nome}\u0305 = ${compI.toFixed(2)}${i_hat} + ${compJ.toFixed(2)}${j_hat} + ${compK.toFixed(2)}${k_hat}`;
+            
+            const position = calcularPosicaoCantoInferiorDireito(textoResultado);
+
+            produtoVetorialResult = { 
+                i: compI, j: compJ, z: compK,
+                origem: { x: v1.x1, y: v1.y1 },
+                text: textoResultado,
+                x: position.x,
+                y: position.y
+            };
+            
+            modalProdutoVetorial.style.display = 'none';
+            desenharTudo();
+        }
+
+        function abrirModalEdicao() {
+            if (!vetorAtualmenteSelecionado) return;
+            vetorParaEditar = vetorAtualmenteSelecionado;
+            
+            document.getElementById('tituloModalEditar').innerHTML = `Editar Vetor <b><span class="vector-name">${vetorParaEditar.nome}</span></b>`;
+            document.getElementById('labelCompX').innerHTML = `${vetorParaEditar.nome}<sub>x</sub>:`;
+            document.getElementById('labelCompY').innerHTML = `${vetorParaEditar.nome}<sub>y</sub>:`;
+
+            const dx = vetorParaEditar.x2 - vetorParaEditar.x1;
+            const dy = vetorParaEditar.y2 - vetorParaEditar.y1;
+            const mod = Math.sqrt(dx*dx + dy*dy);
+            let ang = Math.atan2(dy, dx) * (180 / Math.PI);
+            if (ang < 0) ang += 360;
+
+            document.getElementById('compX').value = dx.toFixed(2);
+            document.getElementById('compY').value = dy.toFixed(2);
+            document.getElementById('modulo').value = mod.toFixed(2);
+            document.getElementById('angulo').value = ang.toFixed(1);
+
+            modalEditarVetor.style.display = 'flex';
+        }
+
+        let isUpdating = false; 
+        function atualizarValoresEdicao(origem) {
+            if (isUpdating) return;
+            isUpdating = true;
+
+            const compXInput = document.getElementById('compX');
+            const compYInput = document.getElementById('compY');
+            const moduloInput = document.getElementById('modulo');
+            const anguloInput = document.getElementById('angulo');
+            
+            if (origem === 'componentes') {
+                const dx = parseFloat(compXInput.value) || 0;
+                const dy = parseFloat(compYInput.value) || 0;
+                
+                const mod = Math.sqrt(dx*dx + dy*dy);
+                let ang = Math.atan2(dy, dx) * (180 / Math.PI);
+                if (ang < 0) ang += 360;
+
+                moduloInput.value = mod.toFixed(2);
+                anguloInput.value = ang.toFixed(1);
+            } else if (origem === 'polar') {
+                const mod = parseFloat(moduloInput.value) || 0;
+                const angDeg = parseFloat(anguloInput.value) || 0;
+                const angRad = angDeg * (Math.PI / 180);
+
+                const dx = mod * Math.cos(angRad);
+                const dy = mod * Math.sin(angRad);
+
+                compXInput.value = dx.toFixed(2);
+                compYInput.value = dy.toFixed(2);
+            }
+            
+            isUpdating = false;
+        }
+
+        function salvarAlteracoesVetor() {
+            if (!vetorParaEditar) return;
+            const dx = parseFloat(document.getElementById('compX').value);
+            const dy = parseFloat(document.getElementById('compY').value);
+            
+            if (isNaN(dx) || isNaN(dy)) {
+                alert("Valores inválidos para as componentes.");
+                return;
+            }
+
+            vetorParaEditar.x2 = vetorParaEditar.x1 + dx;
+            vetorParaEditar.y2 = vetorParaEditar.y1 + dy;
+
+            modalEditarVetor.style.display = 'none';
+            vetorParaEditar = null;
+            limparResultadosCalculados();
+            verificarConexaoEAngulo();
+            desenharTudo();
+        }
+        
+        function calcularTodosOsVersores() {
+            versoresInfo = [];
+            for (const v of vetores) {
+                const dx = v.x2 - v.x1;
+                const dy = v.y2 - v.y1;
+                const modulo = Math.sqrt(dx**2 + dy**2);
+
+                if (modulo < 0.01) continue;
+
+                const versor_x = dx / modulo;
+                const versor_y = dy / modulo;
+
+                versoresInfo.push({
+                    nome: v.nome,
+                    x1: v.x1, y1: v.y1,
+                    x2: v.x1 + versor_x,
+                    y2: v.y1 + versor_y,
+                    corOriginal: v.cor
+                });
+            }
+        }
+
+        function resetarCanvas() { 
+            vetores = []; 
+            limparResultadosCalculados();
+            vetorAtualmenteSelecionado = null;
+            botaoOpcoes.disabled = true;
+            desenharTudo(); 
+        }
+
+        function togglePlano() {
+            const botao = document.getElementById('botaoPlanoPolar');
+            if (modoPlano === 'cartesiano') {
+                modoPlano = 'polar';
+                botao.textContent = 'Plano Cartesiano';
+                botao.classList.remove('tertiary');
+                botao.classList.add('inactive');
+                limparResultadosCalculados();
+            } else {
+                modoPlano = 'cartesiano';
+                botao.textContent = 'Coordenadas Polares';
+                botao.classList.remove('inactive');
+                botao.classList.add('tertiary');
+            }
+            desenharTudo();
+        }
+        
+        // Event Listeners dos Botões
+        document.getElementById('botaoOpcoes').addEventListener('click', abrirModalEdicao);
+        document.getElementById('botaoSalvarVetor').addEventListener('click', salvarAlteracoesVetor);
+        document.getElementById('botaoCalcularResultante').addEventListener('click', calcularVetorResultante);
+        document.getElementById('botaoProdutoEscalar').addEventListener('click', calcularProdutoEscalar);
+        document.getElementById('botaoProdutoVetorial').addEventListener('click', abrirModalProdutoVetorial);
+        document.getElementById('botaoResetar').addEventListener('click', resetarCanvas);
+        document.getElementById('botaoPlanoPolar').addEventListener('click', togglePlano);
+        
+        // Event Listeners dos Modais (fechar ao clicar fora)
+        [modalBoasVindas, modalProdutoVetorial, modalEditarVetor].forEach(m => {
+             m.addEventListener('click', (e) => {
+                if (e.target === m) { m.style.display = 'none'; }
+            });
+        });
+
+        const checkboxProjecao = document.getElementById('checkboxProjecao');
+        checkboxProjecao.addEventListener('change', () => {
+            mostrarProjecao = checkboxProjecao.checked;
+            desenharTudo();
+        });
+
+        const checkboxVersor = document.getElementById('checkboxVersor');
+        checkboxVersor.addEventListener('change', () => {
+            mostrarVersores = checkboxVersor.checked;
+            if (mostrarVersores) {
+                calcularTodosOsVersores();
+            } else {
+                versoresInfo = [];
+            }
+            desenharTudo();
+        });
+
+
+        colorPicker.addEventListener('input', (e) => {
+            if (vetorParaMudarCor) {
+                vetorParaMudarCor.cor = e.target.value;
+                vetorParaMudarCor = null;
+                desenharTudo();
+            }
+        });
+
+        imagem.onload = desenharTudo;
+        
+        window.onload = () => {
+            modalBoasVindas.style.display = 'flex';
             desenharTudo();
         };
+        
+        function encontrarCadeiaPoligonal() {
+            if (vetores.length < 1) return [];
+            const threshold = 0.1;
+            const dist = (pA, pB) => Math.sqrt((pA.x - pB.x)**2 + (pA.y - pB.y)**2);
+            const vetoresDisponiveis = [...vetores];
+            let vetorInicial = vetoresDisponiveis.find(v1 => !vetoresDisponiveis.some(v2 => v1 !== v2 && dist({x: v1.x1, y: v1.y1}, {x: v2.x2, y: v2.y2}) < threshold));
+            if (!vetorInicial && vetoresDisponiveis.length > 0) { vetorInicial = vetoresDisponiveis[0]; } else if (!vetorInicial) { return []; }
+            const cadeia = [vetorInicial];
+            vetoresDisponiveis.splice(vetoresDisponiveis.indexOf(vetorInicial), 1);
+            let vetorAtual = vetorInicial;
+            let iteracoes = 0; 
+            while(vetoresDisponiveis.length > 0 && iteracoes < vetores.length) {
+                const pontoFinalAtual = { x: vetorAtual.x2, y: vetorAtual.y2 };
+                const proximoVetorIndex = vetoresDisponiveis.findIndex(v => dist(pontoFinalAtual, {x: v.x1, y: v.y1}) < threshold);
+                if (proximoVetorIndex !== -1) {
+                    const proximoVetor = vetoresDisponiveis[proximoVetorIndex];
+                    cadeia.push(proximoVetor);
+                    vetorAtual = proximoVetor;
+                    vetoresDisponiveis.splice(proximoVetorIndex, 1);
+                } else { break; }
+                iteracoes++;
+            }
+            return cadeia;
+        };
+        
+        function calcularVetorResultante() {
+            limparResultadosCalculados();
+            const cadeia = encontrarCadeiaPoligonal();
 
-        window.onload = desenharTudo;
+            // Prioridade 1: Regra da cadeia poligonal
+            if (cadeia.length > 1) {
+                const primeiroVetor = cadeia[0];
+                const ultimoVetor = cadeia[cadeia.length - 1];
+                vetorResultante = { x1: primeiroVetor.x1, y1: primeiroVetor.y1, x2: ultimoVetor.x2, y2: ultimoVetor.y2 };
+                desenharTudo();
+                return;
+            }
+
+            // Prioridade 2: Regra do paralelogramo para N vetores na mesma origem
+            const threshold = 0.1;
+            const dist = (pA, pB) => Math.sqrt(Math.pow(pA.x - pB.x, 2) + Math.pow(pA.y - pB.y, 2));
+            
+            let maiorGrupoNaOrigem = [];
+            if (vetores.length > 0) {
+                const grupos = new Map(); // Usar um mapa para agrupar por origem
+                for (const v of vetores) {
+                    const origemV = { x: v.x1, y: v.y1 };
+                    let found = false;
+                    for (const key of grupos.keys()) {
+                        const grupoOrigem = JSON.parse(key);
+                        if (dist(origemV, grupoOrigem) < threshold) {
+                            grupos.get(key).push(v);
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        grupos.set(JSON.stringify(origemV), [v]);
+                    }
+                }
+
+                // Encontrar o maior grupo (se houver vários aglomerados de vetores)
+                for (const grupo of grupos.values()) {
+                    if (grupo.length > maiorGrupoNaOrigem.length) {
+                        maiorGrupoNaOrigem = grupo;
+                    }
+                }
+            }
+            
+            // Calcula a resultante se um grupo com mais de um vetor foi encontrado
+            if (maiorGrupoNaOrigem.length > 1) {
+                const v_ref = maiorGrupoNaOrigem[0]; // Pega a origem do primeiro vetor como referência
+                let dxTotal = 0;
+                let dyTotal = 0;
+                
+                // Soma as componentes de todos os vetores no grupo
+                for(const v of maiorGrupoNaOrigem) {
+                    dxTotal += (v.x2 - v.x1);
+                    dyTotal += (v.y2 - v.y1);
+                }
+                
+                vetorResultante = { 
+                    x1: v_ref.x1, 
+                    y1: v_ref.y1, 
+                    x2: v_ref.x1 + dxTotal, 
+                    y2: v_ref.y1 + dyTotal 
+                };
+                desenharTudo();
+                return;
+            }
+            
+            alert("Nenhuma conexão válida para soma encontrada.\n\nPara somar, conecte vetores (extremidade na origem) ou inicie múltiplos vetores da mesma origem.");
+        };
+
     </script>
 </body>
 </html>
