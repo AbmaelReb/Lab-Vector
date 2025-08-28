@@ -136,6 +136,32 @@
             list-style-type: '→ ';
         }
 
+
+            #botaoCalcularResultante {
+            background-color: #007bff; /* Azul padrão */
+        }
+
+        #botaoProdutoEscalar {
+            background-color: #0056b3; /* Um tom de azul mais escuro */
+        }
+
+        #botaoProdutoVetorial {
+            background-color: #004085; /* O tom de azul mais escuro */
+        }
+
+        /* Opcional: Você também pode querer ajustar as cores do efeito 'hover' (passar o mouse por cima) */
+        #botaoCalcularResultante:hover {
+            background-color: #0069d9;
+        }
+
+        #botaoProdutoEscalar:hover {
+            background-color: #004085;
+        }
+
+        #botaoProdutoVetorial:hover {
+            background-color: #002752;
+        }
+
     </style>
 </head>
 <body>
@@ -272,7 +298,7 @@
 
         const imagem = new Image();
         imagem.src = 'vector.png';
-        const imagemConfig = { x: 5, y: 5, largura: 165*0.75, altura: 65*0.75 };
+        const imagemConfig = { x: 5, y: 5, largura: 180*0.75, altura: 75*0.75 };
 
         const toCanvasX = (x) => origin.x + x * gridSize;
         const toCanvasY = (y) => origin.y - y * gridSize;
