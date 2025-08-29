@@ -7,7 +7,7 @@
     <style>
         body { font-family: Arial, sans-serif; display: flex; align-items: flex-start; margin: 15px 20px; background-color: #f0f0f0; user-select: none; }
         #canvas-container {
-            position: relative;
+            position: relative; 
         }
         canvas { border: 2px solid #333; background-color: #fff; cursor: default; }
         #ui-panel { margin-left: 20px; display: flex; flex-direction: column; gap: 20px; width: 280px; }
@@ -19,12 +19,12 @@
         button.secondary:hover { background-color: #c82333; }
         button.tertiary { background-color: #28a745; }
         button.tertiary:hover { background-color: #218838; }
-        button.options { background-color: #ffc107; color: #212529; }
-        button.options:hover { background-color: #e0a800; }
+        button.options { background-color: #ffbf00; color: #212529; }
+        button.options:hover { background-color: #f5ce5b; }
         button.inactive { background-color: #6c757d; }
         button.inactive:hover { background-color: #5a6268; }
         h3 { border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 0; }
-        #vectorList { min-height: 100px; max-height: 220px; overflow-y: auto; }
+        #vectorList { min-height: 100px; max-height: 178px; overflow-y: auto; }
         .vector-item { display: flex; align-items: flex-start; padding: 5px 0; font-size: 14px; font-family: 'Courier New', Courier, monospace; }
         .color-swatch { width: 15px; height: 15px; border-radius: 3px; margin-right: 10px; border: 1px solid #777; flex-shrink: 0; margin-top: 3px; }
         
@@ -147,6 +147,7 @@
 
         #botaoProdutoVetorial {
             background-color: #004085; /* O tom de azul mais escuro */
+            
         }
 
         /* Opcional: Você também pode querer ajustar as cores do efeito 'hover' (passar o mouse por cima) */
@@ -161,6 +162,15 @@
         #botaoProdutoVetorial:hover {
             background-color: #002752;
         }
+
+        #botaoEscala {
+            background-color: #eb5c0a;
+        }
+
+        #botaoEscala:hover {
+            background-color: #cf4d07; /* tom mais escuro no hover */
+        }
+
 
     </style>
 </head>
@@ -208,7 +218,10 @@
             <button id="botaoProdutoEscalar">Produto Escalar</button>
             <button id="botaoProdutoVetorial">Produto Vetorial</button>
             <button id="botaoResetar" class="secondary">Reiniciar</button>
-            <button id="botaoPlanoPolar" class="tertiary">Coordenadas Polares</button> 
+            <button id="botaoPlanoPolar" class="tertiary">Coordenadas Polares</button>
+            <!-- Botão atualizado -->
+            <button id="botaoEscala">Alterar Escala</button>
+
         </div>
         <div id="vectorList" class="control-box"></div>
     </div>
@@ -216,7 +229,7 @@
     <div id="modalProdutoVetorial" class="modal-overlay">
         <div class="modal-content">
             <span class="modal-close" data-modal-id="modalProdutoVetorial">&times;</span>
-            <h3>Escolha a Ordem do Produto Vetorial</h3>
+            <h3>Escolha a opção do Produto Vetorial</h3>
             <div id="opcoesProdutoVetorial"></div>
         </div>
     </div>
@@ -243,6 +256,22 @@
                 <input type="number" id="angulo" step="1" oninput="atualizarValoresEdicao('polar')">
             </div>
             <button id="botaoSalvarVetor" style="background-color: #28a745;">Salvar Alterações</button>
+        </div>
+    </div>
+    
+    <div id="modalEscala" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" data-modal-id="modalEscala">&times;</span>
+            <h3>Alterar Escala</h3>
+            <div class="modal-input-group">
+                <label for="escalaX">Intervalo Eixo X:</label>
+                <input type="number" id="escalaX" value="1" min="0.5" step="0.5">
+            </div>
+            <div class="modal-input-group">
+                <label for="escalaY">Intervalo Eixo Y:</label>
+                <input type="number" id="escalaY" value="1" min="0.5" step="0.5">
+            </div>
+            <button id="botaoSalvarEscala" style="background-color: #28a745;">Salvar Alterações</button>
         </div>
     </div>
     
@@ -273,6 +302,7 @@
         const origin = { x: canvas.width / 2, y: canvas.height / 2 };
         const clickTolerance = 10;
 
+
         let vetores = [];
         let vetorResultante = null;
         let produtoVetorialResult = null;
@@ -296,14 +326,19 @@
         let messageTimeout = null;
         let tooltip = { visible: false, text: '', x: 0, y: 0, timeout: null };
 
+        let escalaX = 1;
+        let escalaY = 1;
+        let mostrarEixosEspeciais = false;
+
+
         const imagem = new Image();
         imagem.src = 'vector.png';
         const imagemConfig = { x: 5, y: 5, largura: 180*0.75, altura: 75*0.75 };
 
-        const toCanvasX = (x) => origin.x + x * gridSize;
-        const toCanvasY = (y) => origin.y - y * gridSize;
-        const fromCanvasX = (canvasX) => (canvasX - origin.x) / gridSize;
-        const fromCanvasY = (canvasY) => (origin.y - canvasY) / gridSize;
+        const toCanvasX = (x) => origin.x + (x * gridSize) / escalaX;
+        const toCanvasY = (y) => origin.y - (y * gridSize) / escalaY;
+        const fromCanvasX = (canvasX) => ((canvasX - origin.x) * escalaX) / gridSize;
+        const fromCanvasY = (canvasY) => ((origin.y - canvasY) * escalaY) / gridSize;
 
         function gerarCorAleatoria() {
             const hue = Math.floor(Math.random() * 360);
@@ -332,64 +367,112 @@
             return snappedPos;
         }
 
-        function desenharGrid() {
-            ctx.strokeStyle = "#e0e0e0"; ctx.lineWidth = 1; ctx.beginPath();
-            for (let x = origin.x + gridSize; x < canvas.width; x += gridSize) { ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); }
-            for (let x = origin.x - gridSize; x >= 0; x -= gridSize) { ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); }
-            for (let y = origin.y + gridSize; y < canvas.height; y += gridSize) { ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); }
-            for (let y = origin.y - gridSize; y >= 0; y -= gridSize) { ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); }
-            ctx.stroke();
-            ctx.strokeStyle = "#333"; ctx.lineWidth = 2; ctx.beginPath();
-            ctx.moveTo(0, origin.y); ctx.lineTo(canvas.width, origin.y);
-            ctx.moveTo(origin.x, 0); ctx.lineTo(origin.x, canvas.height);
-            ctx.stroke();
-            ctx.font = "12px Arial"; ctx.fillStyle = "#333"; ctx.textAlign = "center"; ctx.textBaseline = "top";
-            for (let i = -Math.floor(origin.x / gridSize); i <= Math.floor(origin.x / gridSize); i++) { if (i !== 0) ctx.fillText(i, toCanvasX(i), toCanvasY(0) + 5); }
-            ctx.textAlign = "right"; ctx.textBaseline = "middle";
-            for (let i = -Math.floor(origin.y / gridSize); i <= Math.floor(origin.y / gridSize); i++) { if (i !== 0) ctx.fillText(i, toCanvasX(0) - 5, toCanvasY(i)); }
+
+
+
+
+
+// Ajusta função de desenhar grid para só mostrar î e ĵ quando calcular produto vetorial
+// Ajusta função de desenhar grid para só mostrar î e ĵ quando calcular produto vetorial
+function desenharGrid() {
+    ctx.strokeStyle = "#e0e0e0"; ctx.lineWidth = 1; ctx.beginPath();
+    for (let x = origin.x + gridSize; x < canvas.width; x += gridSize) { ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); }
+    for (let x = origin.x - gridSize; x >= 0; x -= gridSize) { ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); }
+    for (let y = origin.y + gridSize; y < canvas.height; y += gridSize) { ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); }
+    for (let y = origin.y - gridSize; y >= 0; y -= gridSize) { ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); }
+    ctx.stroke();
+    ctx.strokeStyle = "#333"; ctx.lineWidth = 2; ctx.beginPath();
+    ctx.moveTo(0, origin.y); ctx.lineTo(canvas.width, origin.y);
+    ctx.moveTo(origin.x, 0); ctx.lineTo(origin.x, canvas.height);
+    ctx.stroke();
+
+
+ctx.font = "12px Arial"; ctx.fillStyle = "#333"; ctx.textAlign = "center"; ctx.textBaseline = "top";
+for (let i = -Math.floor(origin.x / gridSize); i <= Math.floor(origin.x / gridSize); i++) {
+    // A coordenada no eixo é (i * escalaX), então passamos esse valor para a função de conversão
+    if (i !== 0) ctx.fillText(i * escalaX, toCanvasX(i * escalaX), toCanvasY(0) + 5);
+}
+ctx.textAlign = "right"; ctx.textBaseline = "middle";
+for (let i = -Math.floor(origin.y / gridSize); i <= Math.floor(origin.y / gridSize); i++) {
+    // O mesmo para o eixo Y
+    if (i !== 0) ctx.fillText(i * escalaY, toCanvasX(0) - 5, toCanvasY(i * escalaY));
+}
+
+
+if (produtoVetorialResult) {
+    ctx.font = "bold 18px Arial";
+    ctx.fillStyle = "#333";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText("î", canvas.width - 20, origin.y - 30);
+    ctx.textAlign = "right";
+    ctx.textBaseline = "bottom";
+    ctx.fillText("ĵ", origin.x + 20, 25);
+}
+}
+
+        function desenharLegendaProdutoVetorial() {
+            if (!produtoVetorialResult) return;
+
+                ctx.font = "bold 18px Arial";
+                ctx.fillStyle = "purple";
+                ctx.textAlign = "left";
+                ctx.textBaseline = "middle";
+
+
+        if (produtoVetorialResult.z > 0) {
+            ctx.fillText("⊙: k̂", 15, 550);
+        } else if (produtoVetorialResult.z < 0) {
+            ctx.fillText("⊗: k̂", 15, 550);
+        }
         }
 
-        function desenharGridPolar() {
-            ctx.strokeStyle = "#e0e0e0"; 
-            ctx.lineWidth = 1;
-            
-            const maxRadius = Math.ceil(fromCanvasX(canvas.width) - fromCanvasX(origin.x));
-            for (let i = 1; i <= maxRadius; i++) {
-                ctx.beginPath();
-                ctx.arc(origin.x, origin.y, i * gridSize, 0, 2 * Math.PI);
-                ctx.stroke();
-            }
+function desenharGridPolar() {
+    ctx.strokeStyle = "#e0e0e0"; 
+    ctx.lineWidth = 1;
+    
+    const maxRadius = Math.ceil(fromCanvasX(canvas.width) - fromCanvasX(origin.x));
+    for (let i = 1; i <= maxRadius; i++) {
+        ctx.beginPath();
+        ctx.arc(origin.x, origin.y, i * gridSize, 0, 2 * Math.PI);
+        ctx.stroke();
+    }
 
-            const angulos = [0, 15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180, 195, 210, 225, 240, 255, 270, 285, 300, 315, 330, 345];
-            const R = Math.sqrt(origin.x**2 + origin.y**2);
-            angulos.forEach(deg => {
-                const rad = deg * Math.PI / 180;
-                ctx.beginPath();
-                ctx.moveTo(origin.x, origin.y);
-                ctx.lineTo(origin.x + R * Math.cos(rad), origin.y - R * Math.sin(rad));
-                ctx.stroke();
-            });
+    const angulos = [0, 15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180, 195, 210, 225, 240, 255, 270, 285, 300, 315, 330, 345];
+    const R = Math.sqrt(origin.x**2 + origin.y**2);
+    angulos.forEach(deg => {
+        const rad = deg * Math.PI / 180;
+        ctx.beginPath();
+        ctx.moveTo(origin.x, origin.y);
+        ctx.lineTo(origin.x + R * Math.cos(rad), origin.y - R * Math.sin(rad));
+        ctx.stroke();
+    });
 
-            ctx.strokeStyle = "#aaa"; ctx.lineWidth = 1.5;
-            ctx.beginPath(); ctx.moveTo(0, origin.y); ctx.lineTo(canvas.width, origin.y); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(origin.x, 0); ctx.lineTo(origin.x, canvas.height); ctx.stroke();
+    ctx.strokeStyle = "#aaa"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(0, origin.y); ctx.lineTo(canvas.width, origin.y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(origin.x, 0); ctx.lineTo(origin.x, canvas.height); ctx.stroke();
 
-            ctx.font = "12px Arial"; ctx.fillStyle = "#333";
-            ctx.textAlign = "center"; ctx.textBaseline = "top";
-            for (let i = 1; i <= maxRadius; i++) {
-                ctx.fillText(i, toCanvasX(i), toCanvasY(0) + 5);
-            }
-            ctx.textAlign = "left"; ctx.textBaseline = "middle";
-            const labelRadius = toCanvasY(0) - R - 15;
-            angulos.forEach(deg => {
-                if (deg % 30 !== 0 && deg % 45 !== 0 && deg !== 15) return;
-                if (deg === 0 || deg === 180) return;
-                const rad = deg * Math.PI / 180;
-                const textX = origin.x + (R + 10) * Math.cos(-rad);
-                const textY = origin.y + (R + 10) * Math.sin(-rad);
-                ctx.fillText(`${deg}°`, textX, textY);
-            });
-        }
+    ctx.font = "12px Arial"; ctx.fillStyle = "#333";
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    
+    // --- LINHAS CORRIGIDAS ABAIXO ---
+    for (let i = 1; i <= maxRadius; i++) {
+        const labelValue = i * escalaX;
+        ctx.fillText(labelValue, toCanvasX(labelValue), toCanvasY(0) + 5);
+    }
+    // --- FIM DA CORREÇÃO ---
+
+    ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    const labelRadius = toCanvasY(0) - R - 15;
+    angulos.forEach(deg => {
+        if (deg % 30 !== 0 && deg % 45 !== 0 && deg !== 15) return;
+        if (deg === 0 || deg === 180) return;
+        const rad = deg * Math.PI / 180;
+        const textX = origin.x + (R + 10) * Math.cos(-rad);
+        const textY = origin.y + (R + 10) * Math.sin(-rad);
+        ctx.fillText(`${deg}°`, textX, textY);
+    });
+}
         
         function desenharRepresentacaoPolar(v) {
             const dx = v.x2 - v.x1;
@@ -425,7 +508,7 @@
             ctx.font = 'bold 14px Arial';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(`θ=${thetaDeg.toFixed(1)}°`, textX, textY);
+            ctx.fillText(`θ = ${thetaDeg.toFixed(1)}°`, textX, textY);
             
             const midVecX = toCanvasX(v.x1 + dx / 2);
             const midVecY = toCanvasY(v.y1 + dy / 2);
@@ -439,7 +522,7 @@
             ctx.font = 'bold 14px Arial';
             ctx.textAlign = (Math.abs(thetaDeg - 90) < 45 || Math.abs(thetaDeg - 270) < 45) ? 'center' : (offsetX > 0 ? 'left' : 'right');
             
-            ctx.fillText(`r=${r.toFixed(2)}`, midVecX + offsetX, midVecY + offsetY);
+            ctx.fillText(`r = ${r.toFixed(2)}`, midVecX + offsetX, midVecY + offsetY);
         }
 
         function desenharTextoComOverline(texto, x, y) {
@@ -601,6 +684,7 @@
 
             ctx.save();
             
+            // Define o caminho do paralelogramo
             ctx.beginPath();
             ctx.moveTo(p1_canvas.x, p1_canvas.y);
             ctx.lineTo(p2_canvas.x, p2_canvas.y);
@@ -608,26 +692,32 @@
             ctx.lineTo(p3_canvas.x, p3_canvas.y);
             ctx.closePath();
 
-            ctx.fillStyle = 'rgba(200, 200, 200, 0.5)';
-            ctx.fill();
+            // --- CONDIÇÃO ADICIONADA ---
+            // Só desenha a área, o contorno e o texto se a área for diferente de zero
+            if (info.area !== 0) {
+                // Preenche a área com uma cor semitransparente
+                ctx.fillStyle = 'rgba(200, 200, 200, 0.5)';
+                ctx.fill();
 
-            ctx.setLineDash([5, 5]);
-            ctx.strokeStyle = '#666';
-            ctx.lineWidth = 2;
-            ctx.stroke();
+                // Desenha o contorno pontilhado
+                ctx.setLineDash([5, 5]);
+                ctx.strokeStyle = '#666';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Posiciona e escreve o texto da área
+                const centerX = toCanvasX((info.p1.x + info.p4.x) / 2);
+                const centerY = toCanvasY((info.p1.y + info.p4.y) / 2);
+                
+                ctx.font = 'bold 16px Arial';
+                ctx.fillStyle = 'black';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`Área = ${info.area.toFixed(2)} u.a.`, centerX, centerY);
+            }
 
             ctx.restore();
-
-            const centerX = toCanvasX((info.p1.x + info.p4.x) / 2);
-            const centerY = toCanvasY((info.p1.y + info.p4.y) / 2);
-            
-            ctx.font = 'bold 16px Arial';
-            ctx.fillStyle = 'black';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(`Área = ${info.area.toFixed(2)} u.a.`, centerX, centerY);
         }
-
         function desenharCaixaDeTexto(texto, x, y, corFundo = '#f8f9fa', corBorda = '#adb5bd') {
             ctx.save();
             ctx.font = '16px "Courier New", Courier, monospace';
@@ -855,6 +945,7 @@
         }
 
         function limparResultadosCalculados() {
+            mostrarEixosEspeciais = false;
             vetorResultante = null;
             produtoVetorialResult = null;
             dotProductInfo = null;
@@ -910,6 +1001,12 @@
             }
             if (produtoVetorialResult && produtoVetorialResult.text) {
                 desenharCaixaDeTexto(produtoVetorialResult.text, produtoVetorialResult.x, produtoVetorialResult.y, '#f3e8ff', '#8428f0');
+            }
+
+
+            if (produtoVetorialResult) {
+                desenharProdutoVetorial(produtoVetorialResult);
+                desenharLegendaProdutoVetorial(); // <-- ADICIONE ESTA LINHA
             }
 
             atualizarListaVetores();
@@ -1120,21 +1217,28 @@
         });
         
         document.addEventListener('keydown', (e) => {
-            const isModalOpen = modalEditarVetor.style.display === 'flex';
 
-            // Atalho para DELETAR um vetor
-            if ((e.key === 'Delete' || e.key === 'Backspace') && vetorAtualmenteSelecionado && !isModalOpen) {
-                e.preventDefault(); 
-                if (confirm(`Deseja realmente excluir o vetor selecionado?`)) {
-                    deletarVetor(vetorAtualmenteSelecionado);
-                }
+            const isModalEscalaOpen = document.getElementById('modalEscala').style.display === 'flex';
+            const isModalEditarVetorOpen = modalEditarVetor.style.display === 'flex';
+
+        if ((e.key === 'Delete' || e.key === 'Backspace') && isModalEscalaOpen && document.activeElement.tagName === 'INPUT') {
+        // Permite deletar normalmente o valor do input sem sobrescrever
+        return;
+        }
+
+        if ((e.key === 'Delete' || e.key === 'Backspace') && isModalEscalaOpen) {
+            e.preventDefault();
+            document.getElementById('escalaX').value = "";
+            document.getElementById('escalaY').value = "";
+            return;
             }
 
-            // Atalho para SALVAR no modal de edição
-            if (e.key === 'Enter' && isModalOpen) {
-                e.preventDefault(); 
-                salvarAlteracoesVetor();
-            }
+        if ((e.key === 'Delete' || e.key === 'Backspace') && vetorAtualmenteSelecionado && !isModalEditarVetorOpen && !isModalEscalaOpen) {
+        e.preventDefault();
+        if (confirm(`Deseja realmente excluir o vetor selecionado?`)) {
+        deletarVetor(vetorAtualmenteSelecionado);
+        }
+        }
         });
 
         function encontrarParConectado() {
@@ -1282,6 +1386,7 @@
             
             const position = calcularPosicaoCantoInferiorDireito(textoResultado);
 
+            mostrarEixosEspeciais = true;
             produtoVetorialResult = { 
                 i: compI, j: compJ, z: compK,
                 origem: { x: v1.x1, y: v1.y1 },
@@ -1418,6 +1523,19 @@
             desenharTudo();
         }
         
+        
+document.getElementById('botaoEscala').addEventListener('click', () => {
+    document.getElementById('modalEscala').style.display = 'flex';
+});
+document.getElementById('botaoSalvarEscala').addEventListener('click', () => {
+    const valX = parseFloat(document.getElementById('escalaX').value);
+    const valY = parseFloat(document.getElementById('escalaY').value);
+    if (!isNaN(valX) && valX > 0) escalaX = valX;
+    if (!isNaN(valY) && valY > 0) escalaY = valY;
+    document.getElementById('modalEscala').style.display = 'none';
+    desenharTudo();
+});
+
         // Event Listeners dos Botões
         document.getElementById('botaoOpcoes').addEventListener('click', abrirModalEdicao);
         document.getElementById('botaoSalvarVetor').addEventListener('click', salvarAlteracoesVetor);
